@@ -8,6 +8,8 @@ public record GetDocumentResponse(
     string ContentType,
     string S3Key,
     long FileSize,
-    DateTime UploadedAt
+    DateTime UploadedAt,
+    string? Resume,
+    DateTime? ResumeGeneratedAt
 );
 

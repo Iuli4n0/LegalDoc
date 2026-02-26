@@ -14,6 +14,8 @@ public class Document
     public string S3Key { get; private set; } = null!;
     public long FileSize { get; private set; }
     public DateTime UploadedAt { get; private set; }
+    public string? Resume { get; private set; }
+    public DateTime? ResumeGeneratedAt { get; private set; }
 
     public static Document Create(string fileName, string contentType, string s3Key, long fileSize)
     {
@@ -26,5 +28,11 @@ public class Document
             FileSize = fileSize,
             UploadedAt = DateTime.UtcNow
         };
+    }
+
+    public void SetResume(string resume)
+    {
+        Resume = resume;
+        ResumeGeneratedAt = DateTime.UtcNow;
     }
 }

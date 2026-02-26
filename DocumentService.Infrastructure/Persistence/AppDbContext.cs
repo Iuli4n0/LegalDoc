@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
             entity.Property(d => d.S3Key).IsRequired().HasMaxLength(1000);
             entity.Property(d => d.FileSize).IsRequired();
             entity.Property(d => d.UploadedAt).IsRequired();
+            entity.Property(d => d.Resume).HasColumnType("text");
+            entity.Property(d => d.ResumeGeneratedAt);
         });
     }
 }

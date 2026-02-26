@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using DocumentService.Application.Interfaces;
+using DocumentService.Application.Abstractions;
 using DocumentService.Domain.Entities;
 using MediatR;
 

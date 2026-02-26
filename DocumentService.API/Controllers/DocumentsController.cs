@@ -1,4 +1,5 @@
 using System;
+using DocumentService.Application.Commands.GenerateDocumentResume;
 using DocumentService.Application.Commands.UploadDocument;
 using DocumentService.Application.Queries.GetDocument;
 using MediatR;
@@ -49,6 +50,33 @@ public class DocumentsController : ControllerBase
             return NotFound();
 
         return Ok(response);
+    }
+
+    [HttpPost("{id:guid}/generate-resume")]
+    public async Task<ActionResult<GenerateDocumentResumeResponse>> GenerateResume(Guid id)
+    {
+        try
+        {
+            var command = new GenerateDocumentResumeCommand(id);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (NotSupportedException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(504, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Failed to generate resume: {ex.Message}");
+        }
     }
 }
 

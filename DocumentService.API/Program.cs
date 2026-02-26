@@ -1,5 +1,5 @@
 using Amazon.S3;
-using DocumentService.Application.Interfaces;
+using DocumentService.Application.Abstractions;
 using DocumentService.Infrastructure.Persistence;
 using DocumentService.Infrastructure.Repositories;
 using DocumentService.Infrastructure.Services;
@@ -15,19 +15,10 @@ builder.Services.AddOpenApi();
 
 // MediatR
 builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(DocumentService.Application.Interfaces.IDocumentRepository).Assembly));
+    cfg.RegisterServicesFromAssembly(typeof(IDocumentRepository).Assembly));
 
 // AWS S3 Configuration
 var awsOptions = builder.Configuration.GetAWSOptions();
-
-// Support for LocalStack (local development)
-var serviceUrl = builder.Configuration["AWS:ServiceURL"];
-if (!string.IsNullOrEmpty(serviceUrl))
-{
-    awsOptions.DefaultClientConfig.ServiceURL = serviceUrl;
-    builder.Logging.AddConsole().SetMinimumLevel(LogLevel.Information);
-    Console.WriteLine($"AWS configured for LocalStack at: {serviceUrl}");
-}
 
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonS3>();
@@ -44,6 +35,8 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connect
 // Application services
 builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
+builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
 
 var app = builder.Build();
 
@@ -59,4 +52,4 @@ if (!app.Environment.IsDevelopment())
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
