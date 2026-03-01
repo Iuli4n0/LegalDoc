@@ -1,8 +1,11 @@
 @page "/upload"
 @rendermode InteractiveServer
 @using LegalDoc.Frontend.Models
-@inject IHttpClientFactory HttpClientFactory
+@using LegalDoc.Frontend.Services
+@inject ApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 
 <PageTitle>Upload Document</PageTitle>
 
@@ -86,6 +89,18 @@
     private bool _uploading;
     private UploadDocumentResponse? _uploadResult;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/login", forceLoad: false);
+            }
+        }
+    }
+
     private void OnFileSelected(IBrowserFile? file)
     {
         _selectedFile = file;
@@ -100,7 +115,7 @@
 
         try
         {
-            var client = HttpClientFactory.CreateClient("API");
+            var client = ApiClient.CreateClient();
 
             using var content = new MultipartFormDataContent();
             var stream = _selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50MB

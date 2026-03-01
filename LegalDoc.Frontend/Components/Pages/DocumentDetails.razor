@@ -2,8 +2,11 @@
 @page "/documents/{Id:guid}"
 @rendermode InteractiveServer
 @using LegalDoc.Frontend.Models
-@inject IHttpClientFactory HttpClientFactory
+@using LegalDoc.Frontend.Services
+@inject ApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 
 <PageTitle>Detalii Document</PageTitle>
 
@@ -128,6 +131,18 @@
     private bool _generatingResume;
     private GetDocumentResponse? _document;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/login", forceLoad: false);
+            }
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         if (Id.HasValue)
@@ -164,7 +179,7 @@
 
         try
         {
-            var client = HttpClientFactory.CreateClient("API");
+            var client = ApiClient.CreateClient();
             var response = await client.GetAsync($"/api/documents/{id}");
 
             if (response.IsSuccessStatusCode)
@@ -199,7 +214,7 @@
 
         try
         {
-            var client = HttpClientFactory.CreateClient("API");
+            var client = ApiClient.CreateClient();
             var response = await client.PostAsync($"/api/documents/{_document.Id}/generate-resume", null);
 
             if (response.IsSuccessStatusCode)

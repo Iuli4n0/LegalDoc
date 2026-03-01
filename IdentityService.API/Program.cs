@@ -1,9 +1,8 @@
 using System.Text;
-using Amazon.S3;
-using DocumentService.Application.Abstractions;
-using DocumentService.Infrastructure.Persistence;
-using DocumentService.Infrastructure.Repositories;
-using DocumentService.Infrastructure.Services;
+using IdentityService.Application.Abstractions;
+using IdentityService.Infrastructure.Persistence;
+using IdentityService.Infrastructure.Repositories;
+using IdentityService.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -29,28 +28,16 @@ builder.Services.AddOpenApi();
 
 // MediatR
 builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(IDocumentRepository).Assembly));
+    cfg.RegisterServicesFromAssembly(typeof(IUserRepository).Assembly));
 
-// AWS S3 Configuration
-var awsOptions = builder.Configuration.GetAWSOptions();
-
-builder.Services.AddDefaultAWSOptions(awsOptions);
-builder.Services.AddAWSService<IAmazonS3>();
-
-Console.WriteLine($"AWS Region: {awsOptions.Region?.SystemName ?? "default"}");
-Console.WriteLine($"AWS Profile: {awsOptions.Profile ?? "default"}");
-Console.WriteLine($"S3 Bucket: {builder.Configuration["AWS:BucketName"]}");
-
-
-// EF Core - PostgreSQL
+// EF Core - PostgreSQL (Separate database for Identity)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
 
 // Application services
-builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
-builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
-builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
-builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -97,3 +84,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 await app.RunAsync();
+

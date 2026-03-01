@@ -1,0 +1,128 @@
+@page "/login"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Models
+@using LegalDoc.Frontend.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>LegalDoc - Autentificare</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h4" Align="Align.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Login" Class="mr-2"/>
+                    Autentificare
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudTextField @bind-Value="_email"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Email-ul este obligatoriu"
+                              Validation="@(new Func<string, string?>(ValidateEmail))"
+                              Class="mb-3"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"/>
+
+                <MudTextField @bind-Value="_password"
+                              Label="Parolă"
+                              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Parola este obligatorie"
+                              Class="mb-3"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                              OnAdornmentClick="() => _showPassword = !_showPassword"/>
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+            }
+        </MudCardContent>
+        <MudCardActions Class="d-flex flex-column pa-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@(!_formValid || _loading)"
+                       OnClick="HandleLogin">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Se autentifică...</MudText>
+                }
+                else
+                {
+                    <MudText>Intră în cont</MudText>
+                }
+            </MudButton>
+            <MudText Align="Align.Center" Class="mt-4">
+                Nu ai cont?
+                <MudLink Href="/register" Color="Color.Primary">Creează un cont</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private MudForm _form = null!;
+    private bool _formValid;
+    private bool _loading;
+    private bool _showPassword;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string? _errorMessage;
+
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email-ul este obligatoriu";
+        if (!email.Contains('@') || !email.Contains('.'))
+            return "Email invalid";
+        return null;
+    }
+
+    private async Task HandleLogin()
+    {
+        await _form.Validate();
+        if (!_formValid) return;
+
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new LoginRequest
+            {
+                Email = _email,
+                Password = _password
+            };
+
+            await AuthService.LoginAsync(request);
+            Snackbar.Add("Autentificare reușită!", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _errorMessage = "Email sau parolă incorectă.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Eroare la autentificare: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+

@@ -9,6 +9,7 @@ public class Document
     }
 
     public Guid Id { get; private set; }
+    public string UserId { get; private set; } = null!;
     public string FileName { get; private set; } = null!;
     public string ContentType { get; private set; } = null!;
     public string S3Key { get; private set; } = null!;
@@ -17,11 +18,12 @@ public class Document
     public string? Resume { get; private set; }
     public DateTime? ResumeGeneratedAt { get; private set; }
 
-    public static Document Create(string fileName, string contentType, string s3Key, long fileSize)
+    public static Document Create(string fileName, string contentType, string s3Key, long fileSize, string userId)
     {
         return new Document
         {
             Id = Guid.NewGuid(),
+            UserId = userId,
             FileName = fileName,
             ContentType = contentType,
             S3Key = s3Key,

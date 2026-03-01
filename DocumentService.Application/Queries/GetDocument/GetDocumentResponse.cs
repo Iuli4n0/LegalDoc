@@ -4,6 +4,7 @@ namespace DocumentService.Application.Queries.GetDocument;
 
 public record GetDocumentResponse(
     Guid Id,
+    string UserId,
     string FileName,
     string ContentType,
     string S3Key,

@@ -1,0 +1,172 @@
+@page "/register"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Models
+@using LegalDoc.Frontend.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>LegalDoc - Înregistrare</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h4" Align="Align.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2"/>
+                    Creează Cont
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudTextField @bind-Value="_fullName"
+                              Label="Nume complet"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Numele este obligatoriu"
+                              Class="mb-3"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Person"/>
+
+                <MudTextField @bind-Value="_email"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Email-ul este obligatoriu"
+                              Validation="@(new Func<string, string?>(ValidateEmail))"
+                              Class="mb-3"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"/>
+
+                <MudTextField @bind-Value="_password"
+                              Label="Parolă"
+                              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Parola este obligatorie"
+                              Validation="@(new Func<string, string?>(ValidatePassword))"
+                              Class="mb-3"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                              OnAdornmentClick="() => _showPassword = !_showPassword"/>
+
+                <MudTextField @bind-Value="_confirmPassword"
+                              Label="Confirmă parola"
+                              InputType="@(_showConfirmPassword ? InputType.Text : InputType.Password)"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Confirmarea parolei este obligatorie"
+                              Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
+                              Class="mb-3"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showConfirmPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                              OnAdornmentClick="() => _showConfirmPassword = !_showConfirmPassword"/>
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+            }
+        </MudCardContent>
+        <MudCardActions Class="d-flex flex-column pa-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@(!_formValid || _loading)"
+                       OnClick="HandleRegister">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Se creează contul...</MudText>
+                }
+                else
+                {
+                    <MudText>Creează cont</MudText>
+                }
+            </MudButton>
+            <MudText Align="Align.Center" Class="mt-4">
+                Ai deja cont?
+                <MudLink Href="/login" Color="Color.Primary">Autentifică-te</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private MudForm _form = null!;
+    private bool _formValid;
+    private bool _loading;
+    private bool _showPassword;
+    private bool _showConfirmPassword;
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _errorMessage;
+
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email-ul este obligatoriu";
+        if (!email.Contains('@') || !email.Contains('.'))
+            return "Email invalid";
+        return null;
+    }
+
+    private string? ValidatePassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            return "Parola este obligatorie";
+        if (password.Length < 6)
+            return "Parola trebuie să aibă minim 6 caractere";
+        return null;
+    }
+
+    private string? ValidateConfirmPassword(string confirmPassword)
+    {
+        if (string.IsNullOrWhiteSpace(confirmPassword))
+            return "Confirmarea parolei este obligatorie";
+        if (confirmPassword != _password)
+            return "Parolele nu coincid";
+        return null;
+    }
+
+    private async Task HandleRegister()
+    {
+        await _form.Validate();
+        if (!_formValid) return;
+
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new RegisterRequest
+            {
+                Email = _email,
+                Password = _password,
+                FullName = _fullName
+            };
+
+            await AuthService.RegisterAsync(request);
+            Snackbar.Add("Cont creat cu succes! Te poți autentifica.", Severity.Success);
+            Navigation.NavigateTo("/login", forceLoad: false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Eroare la înregistrare: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+

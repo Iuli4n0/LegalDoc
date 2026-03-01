@@ -1,4 +1,11 @@
 ﻿@inherits LayoutComponentBase
+@using LegalDoc.Frontend.Services
+@inject AuthService AuthService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@implements IDisposable
+
 <MudThemeProvider/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
@@ -9,13 +16,37 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer"/>
         <MudText Typo="Typo.h5" Class="ml-3">LegalDoc</MudText>
         <MudSpacer/>
+        @if (AuthState.IsAuthenticated)
+        {
+            <MudText Class="mr-3" Typo="Typo.body2">@AuthState.UserName</MudText>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" OnClick="HandleLogout">
+                Deconectare
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login" Href="/login">
+                Autentificare
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/register" Class="ml-2">
+                Înregistrare
+            </MudButton>
+        }
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
         <MudNavMenu>
             <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Acasă</MudNavLink>
-            <MudNavLink Href="/upload" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudUpload">Upload Document</MudNavLink>
-            <MudNavLink Href="/documents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FindInPage">Caută Document</MudNavLink>
+            @if (AuthState.IsAuthenticated)
+            {
+                <MudNavLink Href="/upload" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudUpload">Upload Document</MudNavLink>
+                <MudNavLink Href="/documents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FindInPage">Caută Document</MudNavLink>
+            }
+            else
+            {
+                <MudNavLink Href="/login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">Autentificare</MudNavLink>
+                <MudNavLink Href="/register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">Înregistrare</MudNavLink>
+            }
         </MudNavMenu>
     </MudDrawer>
 
@@ -35,8 +66,35 @@
 @code {
     private bool _drawerOpen = true;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            AuthState.OnChange += HandleAuthStateChanged;
+            await AuthService.InitializeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void HandleAuthStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Snackbar.Add("Te-ai deconectat cu succes.", Severity.Info);
+        Navigation.NavigateTo("/login", forceLoad: false);
+    }
+
     private void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= HandleAuthStateChanged;
     }
 }

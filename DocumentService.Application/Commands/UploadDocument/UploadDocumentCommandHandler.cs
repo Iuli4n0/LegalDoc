@@ -30,12 +30,14 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             request.FileName, 
             request.ContentType, 
             s3Key, 
-            request.FileSize);
+            request.FileSize,
+            request.UserId);
 
         await _documentRepository.AddAsync(document);
 
         return new UploadDocumentResponse(
             document.Id,
+            document.UserId,
             document.FileName,
             document.ContentType,
             document.S3Key,

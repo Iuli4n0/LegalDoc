@@ -1,4 +1,5 @@
 using LegalDoc.Frontend.Components;
+using LegalDoc.Frontend.Services;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,9 +10,21 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
+// Auth services
+builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ApiClient>();
+
+// HttpClient for IdentityService (no auth header needed for login/register)
+builder.Services.AddHttpClient("IdentityAPI", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["IdentityServiceUrl"] ?? "http://localhost:5164");
+});
+
+// HttpClient for DocumentService (auth header set by ApiClient at call time)
 builder.Services.AddHttpClient("API", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5163");
+    client.BaseAddress = new Uri(builder.Configuration["DocumentServiceUrl"] ?? "http://localhost:5163");
 });
 
 var app = builder.Build();
@@ -33,4 +46,4 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+await app.RunAsync();

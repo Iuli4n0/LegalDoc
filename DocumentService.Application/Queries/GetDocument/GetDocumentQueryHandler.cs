@@ -23,6 +23,7 @@ public class GetDocumentQueryHandler : IRequestHandler<GetDocumentQuery, GetDocu
 
         return new GetDocumentResponse(
             document.Id,
+            document.UserId,
             document.FileName,
             document.ContentType,
             document.S3Key,
