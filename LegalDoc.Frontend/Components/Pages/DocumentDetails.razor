@@ -1,0 +1,257 @@
+@page "/documents"
+@page "/documents/{Id:guid}"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Models
+@using LegalDoc.Frontend.Services
+@inject ApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalii Document</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Caută Document</MudText>
+
+<MudCard Class="mb-4">
+    <MudCardContent>
+        <MudTextField @bind-Value="_searchId"
+                      Label="ID Document (GUID)"
+                      Placeholder="ex: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      OnAdornmentClick="SearchDocument"
+                      Immediate="true"
+                      OnKeyDown="OnSearchKeyDown"/>
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SearchDocument"
+                   Disabled="_loading"
+                   StartIcon="@Icons.Material.Filled.Search">
+            @if (_loading)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Se caută...</MudText>
+            }
+            else
+            {
+                <MudText>Caută</MudText>
+            }
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        Documentul nu a fost găsit.
+    </MudAlert>
+}
+
+@if (_document is not null)
+{
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2"/>
+                    @_document.FileName
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    <tr><td><strong>ID</strong></td><td>@_document.Id</td></tr>
+                    <tr><td><strong>Nume Fișier</strong></td><td>@_document.FileName</td></tr>
+                    <tr><td><strong>Tip Conținut</strong></td><td>@_document.ContentType</td></tr>
+                    <tr><td><strong>Dimensiune</strong></td><td>@FormatFileSize(_document.FileSize)</td></tr>
+                    <tr><td><strong>Data Upload</strong></td><td>@_document.UploadedAt.ToString("dd.MM.yyyy HH:mm")</td></tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudCardContent>
+    </MudCard>
+
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.Summarize" Class="mr-2"/>
+                    Rezumat
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (!string.IsNullOrEmpty(_document.Resume))
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                    Generat la: @_document.ResumeGeneratedAt?.ToString("dd.MM.yyyy HH:mm")
+                </MudAlert>
+                <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_document.Resume</MudText>
+            }
+            else if (_generatingResume)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2"/>
+                <MudText>Se generează rezumatul... Aceasta poate dura câteva minute.</MudText>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">Niciun rezumat generat încă.</MudText>
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Secondary"
+                       OnClick="GenerateResume"
+                       Disabled="_generatingResume"
+                       StartIcon="@Icons.Material.Filled.AutoAwesome">
+                @if (_generatingResume)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Se generează...</MudText>
+                }
+                else
+                {
+                    <MudText>Generează Rezumat</MudText>
+                }
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private string _searchId = string.Empty;
+    private bool _loading;
+    private bool _notFound;
+    private bool _generatingResume;
+    private GetDocumentResponse? _document;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/login", forceLoad: false);
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id.HasValue)
+        {
+            _searchId = Id.Value.ToString();
+            await LoadDocument(Id.Value);
+        }
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchDocument();
+        }
+    }
+
+    private async Task SearchDocument()
+    {
+        if (!Guid.TryParse(_searchId, out var id))
+        {
+            Snackbar.Add("Te rog introdu un GUID valid.", Severity.Warning);
+            return;
+        }
+
+        await LoadDocument(id);
+    }
+
+    private async Task LoadDocument(Guid id)
+    {
+        _loading = true;
+        _notFound = false;
+        _document = null;
+
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.GetAsync($"/api/documents/{id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                _document = await response.Content.ReadFromJsonAsync<GetDocumentResponse>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Eroare: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task GenerateResume()
+    {
+        if (_document is null) return;
+
+        _generatingResume = true;
+
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.PostAsync($"/api/documents/{_document.Id}/generate-resume", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GenerateResumeResponse>();
+                Snackbar.Add($"Rezumat generat! ({result?.ChunksProcessed} chunk-uri procesate)", Severity.Success);
+
+                // Reload the document to get the updated resume
+                await LoadDocument(_document.Id);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Eroare la generare: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _generatingResume = false;
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        var order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+}
+

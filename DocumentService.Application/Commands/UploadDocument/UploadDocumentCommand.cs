@@ -9,4 +9,5 @@ public class UploadDocumentCommand : IRequest<UploadDocumentResponse>
     public string FileName { get; init; } = null!;
     public string ContentType { get; init; } = null!;
     public long FileSize { get; init; }
+    public string UserId { get; init; } = null!;
 }

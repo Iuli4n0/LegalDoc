@@ -1,11 +1,25 @@
+using System.Text;
 using Amazon.S3;
-using DocumentService.Application.Interfaces;
+using DocumentService.Application.Abstractions;
 using DocumentService.Infrastructure.Persistence;
 using DocumentService.Infrastructure.Repositories;
 using DocumentService.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5288", "https://localhost:7205")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // Controllers
 builder.Services.AddControllers();
@@ -15,19 +29,10 @@ builder.Services.AddOpenApi();
 
 // MediatR
 builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(DocumentService.Application.Interfaces.IDocumentRepository).Assembly));
+    cfg.RegisterServicesFromAssembly(typeof(IDocumentRepository).Assembly));
 
 // AWS S3 Configuration
 var awsOptions = builder.Configuration.GetAWSOptions();
-
-// Support for LocalStack (local development)
-var serviceUrl = builder.Configuration["AWS:ServiceURL"];
-if (!string.IsNullOrEmpty(serviceUrl))
-{
-    awsOptions.DefaultClientConfig.ServiceURL = serviceUrl;
-    builder.Logging.AddConsole().SetMinimumLevel(LogLevel.Information);
-    Console.WriteLine($"AWS configured for LocalStack at: {serviceUrl}");
-}
 
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonS3>();
@@ -44,6 +49,33 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connect
 // Application services
 builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
+builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
+
+// JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "LegalDoc",
+        ValidAudience = jwtSettings["Audience"] ?? "LegalDoc",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -57,6 +89,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseCors("AllowFrontend");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();

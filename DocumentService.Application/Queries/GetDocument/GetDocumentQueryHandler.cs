@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using DocumentService.Application.Interfaces;
+using DocumentService.Application.Abstractions;
 using MediatR;
 
 namespace DocumentService.Application.Queries.GetDocument;
@@ -23,11 +23,14 @@ public class GetDocumentQueryHandler : IRequestHandler<GetDocumentQuery, GetDocu
 
         return new GetDocumentResponse(
             document.Id,
+            document.UserId,
             document.FileName,
             document.ContentType,
             document.S3Key,
             document.FileSize,
-            document.UploadedAt
+            document.UploadedAt,
+            document.Resume,
+            document.ResumeGeneratedAt
         );
     }
 }

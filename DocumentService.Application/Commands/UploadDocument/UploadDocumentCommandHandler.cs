@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using DocumentService.Application.Interfaces;
+using DocumentService.Application.Abstractions;
 using DocumentService.Domain.Entities;
 using MediatR;
 
@@ -30,12 +30,14 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             request.FileName, 
             request.ContentType, 
             s3Key, 
-            request.FileSize);
+            request.FileSize,
+            request.UserId);
 
         await _documentRepository.AddAsync(document);
 
         return new UploadDocumentResponse(
             document.Id,
+            document.UserId,
             document.FileName,
             document.ContentType,
             document.S3Key,
