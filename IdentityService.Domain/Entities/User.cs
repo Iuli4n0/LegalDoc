@@ -17,6 +17,15 @@ public class User
 
     public static User Create(string email, string passwordHash, string fullName)
     {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email cannot be empty.", nameof(email));
+        
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("Password hash cannot be empty.", nameof(passwordHash));
+        
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new ArgumentException("Full name cannot be empty.", nameof(fullName));
+        
         return new User
         {
             Id = Guid.NewGuid(),

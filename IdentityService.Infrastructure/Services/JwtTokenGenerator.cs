@@ -11,6 +11,10 @@ namespace IdentityService.Infrastructure.Services;
 
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
+    private const int DefaultExpirationMinutes = 1440; // 24 hours
+    private const string DefaultIssuer = "LegalDoc";
+    private const string DefaultAudience = "LegalDoc";
+    
     private readonly IConfiguration _configuration;
 
     public JwtTokenGenerator(IConfiguration configuration)
@@ -22,9 +26,9 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
-        var issuer = jwtSettings["Issuer"] ?? "LegalDoc";
-        var audience = jwtSettings["Audience"] ?? "LegalDoc";
-        var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "1440"); // Default 24 hours
+        var issuer = jwtSettings["Issuer"] ?? DefaultIssuer;
+        var audience = jwtSettings["Audience"] ?? DefaultAudience;
+        var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? DefaultExpirationMinutes.ToString());
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

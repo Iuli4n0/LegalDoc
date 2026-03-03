@@ -8,6 +8,8 @@ namespace IdentityService.Application.Commands.LoginUser;
 
 public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, LoginUserResponse>
 {
+    private const int TokenExpirationHours = 24;
+    
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
@@ -50,7 +52,7 @@ public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, LoginUs
             user.Email,
             user.FullName,
             token,
-            DateTime.UtcNow.AddHours(24) // Token expiration - should match JWT settings
+            DateTime.UtcNow.AddHours(TokenExpirationHours)
         );
     }
 }

@@ -14,6 +14,9 @@ namespace DocumentService.API.Controllers;
 [Authorize]
 public class DocumentsController : ControllerBase
 {
+    private const int GatewayTimeoutStatusCode = 504;
+    private const int InternalServerErrorStatusCode = 500;
+    
     private readonly IMediator _mediator;
 
     public DocumentsController(IMediator mediator)
@@ -90,7 +93,7 @@ public class DocumentsController : ControllerBase
             var response = await _mediator.Send(command);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -100,11 +103,11 @@ public class DocumentsController : ControllerBase
         }
         catch (TimeoutException ex)
         {
-            return StatusCode(504, ex.Message);
+            return StatusCode(GatewayTimeoutStatusCode, ex.Message);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Failed to generate resume: {ex.Message}");
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to generate resume: {ex.Message}");
         }
     }
 
