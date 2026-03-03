@@ -2,9 +2,10 @@ name: CI - Build, Test & SonarQube Analysis
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
+  workflow_dispatch:
 
 jobs:
   build-test-sonar:
@@ -86,4 +87,3 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 30
-
