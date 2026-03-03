@@ -3,3 +3,19 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# IDE
+.idea/
+*.DotSettings.user
+.DS_Store
+
+# SonarQube
+.sonarqube/
+.scannerwork/
+
+# Test results & coverage
+**/TestResults/
+coverage.xml
+coverage.cobertura.xml
+test-coverage-report.html
+*.coverage
