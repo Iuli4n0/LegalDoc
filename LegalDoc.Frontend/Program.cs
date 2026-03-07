@@ -1,5 +1,6 @@
 using LegalDoc.Frontend.Components;
 using LegalDoc.Frontend.Services;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,8 @@ builder.Services.AddMudServices();
 
 // Auth services
 builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<ProtectedLocalStorage>();
+builder.Services.AddScoped<IAuthStorage, ProtectedLocalAuthStorage>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ApiClient>();
 

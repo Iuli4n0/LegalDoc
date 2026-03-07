@@ -39,6 +39,7 @@ public class GetDocumentQueryHandlerTests
         Assert.Equal("application/pdf", response.ContentType);
         Assert.Equal("key/contract.pdf", response.S3Key);
         Assert.Equal(2048, response.FileSize);
+        Assert.Equal(document.UploadedAt, response.UploadedAt);
     }
 
     [Fact]
@@ -120,4 +121,3 @@ public class GetDocumentQueryHandlerTests
         _documentRepositoryMock.Verify(r => r.GetByIdAsync(documentId), Times.Once);
     }
 }
-

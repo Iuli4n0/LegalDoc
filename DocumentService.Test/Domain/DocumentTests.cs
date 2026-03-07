@@ -84,5 +84,76 @@ public class DocumentTests
         var after = DateTime.UtcNow;
         Assert.InRange(document.UploadedAt, before, after);
     }
-}
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_InvalidFileName_When_CreateIsCalled_Then_ArgumentExceptionIsThrown(string? fileName)
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Document.Create(fileName!, "application/pdf", "key", 100, "user-1"));
+
+        Assert.Equal("fileName", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_InvalidContentType_When_CreateIsCalled_Then_ArgumentExceptionIsThrown(string? contentType)
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Document.Create("file.pdf", contentType!, "key", 100, "user-1"));
+
+        Assert.Equal("contentType", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_InvalidS3Key_When_CreateIsCalled_Then_ArgumentExceptionIsThrown(string? s3Key)
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Document.Create("file.pdf", "application/pdf", s3Key!, 100, "user-1"));
+
+        Assert.Equal("s3Key", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Given_InvalidFileSize_When_CreateIsCalled_Then_ArgumentExceptionIsThrown(long fileSize)
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Document.Create("file.pdf", "application/pdf", "key", fileSize, "user-1"));
+
+        Assert.Equal("fileSize", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_InvalidUserId_When_CreateIsCalled_Then_ArgumentExceptionIsThrown(string? userId)
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            Document.Create("file.pdf", "application/pdf", "key", 100, userId!));
+
+        Assert.Equal("userId", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_InvalidResume_When_SetResumeIsCalled_Then_ArgumentExceptionIsThrown(string? resume)
+    {
+        var document = Document.Create("file.pdf", "application/pdf", "key", 100, "user-1");
+
+        var exception = Assert.Throws<ArgumentException>(() => document.SetResume(resume!));
+
+        Assert.Equal("resume", exception.ParamName);
+    }
+}

@@ -94,5 +94,37 @@ public class UserTests
         Assert.True(user.CreatedAt >= beforeCreation);
         Assert.True(user.CreatedAt <= afterCreation);
     }
-}
 
+    [Fact]
+    public void Given_EmptyEmail_When_CreateIsCalled_Then_ShouldThrowArgumentException()
+    {
+        // Act
+        var exception = Assert.Throws<ArgumentException>(() => User.Create(" ", "hash", "Test User"));
+
+        // Assert
+        Assert.Equal("email", exception.ParamName);
+        Assert.Contains("Email cannot be empty", exception.Message);
+    }
+
+    [Fact]
+    public void Given_EmptyPasswordHash_When_CreateIsCalled_Then_ShouldThrowArgumentException()
+    {
+        // Act
+        var exception = Assert.Throws<ArgumentException>(() => User.Create("user@test.com", " ", "Test User"));
+
+        // Assert
+        Assert.Equal("passwordHash", exception.ParamName);
+        Assert.Contains("Password hash cannot be empty", exception.Message);
+    }
+
+    [Fact]
+    public void Given_EmptyFullName_When_CreateIsCalled_Then_ShouldThrowArgumentException()
+    {
+        // Act
+        var exception = Assert.Throws<ArgumentException>(() => User.Create("user@test.com", "hash", " "));
+
+        // Assert
+        Assert.Equal("fullName", exception.ParamName);
+        Assert.Contains("Full name cannot be empty", exception.Message);
+    }
+}

@@ -5,10 +5,18 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <CollectCoverage>true</CollectCoverage>
+        <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+        <Threshold>100</Threshold>
+        <ThresholdType>line</ThresholdType>
+        <ThresholdStat>total</ThresholdStat>
+        <ExcludeByFile>**/Program.cs,**/Services/AuthStorage.cs,**/Components/App.razor,**/Components/Routes.razor,**/Components/Layout/MainLayout.razor,**/Components/Pages/Home.razor,**/Components/Pages/Upload.razor,**/Components/Pages/DocumentDetails.razor,**/Components/Pages/Error.razor,**/Components/Pages/NotFound.razor</ExcludeByFile>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="bunit" Version="1.36.19" />
         <PackageReference Include="coverlet.collector" Version="6.0.4" />
+        <PackageReference Include="coverlet.msbuild" Version="6.0.4" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
         <PackageReference Include="Moq" Version="4.20.72" />
         <PackageReference Include="RichardSzalay.MockHttp" Version="7.0.0" />

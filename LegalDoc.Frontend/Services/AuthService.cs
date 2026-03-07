@@ -1,22 +1,21 @@
 using System.Net.Http.Json;
 using LegalDoc.Frontend.Models;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace LegalDoc.Frontend.Services;
 
 public class AuthService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ProtectedLocalStorage _localStorage;
+    private readonly IAuthStorage _authStorage;
     private readonly AuthStateService _authState;
 
     public AuthService(
         IHttpClientFactory httpClientFactory,
-        ProtectedLocalStorage localStorage,
+        IAuthStorage authStorage,
         AuthStateService authState)
     {
         _httpClientFactory = httpClientFactory;
-        _localStorage = localStorage;
+        _authStorage = authStorage;
         _authState = authState;
     }
 
@@ -33,9 +32,9 @@ public class AuthService
         var result = await response.Content.ReadFromJsonAsync<LoginResponse>()
                      ?? throw new Exception("Răspuns invalid de la server.");
 
-        await _localStorage.SetAsync("authToken", result.Token);
-        await _localStorage.SetAsync("userName", result.FullName);
-        await _localStorage.SetAsync("userEmail", result.Email);
+        await _authStorage.SetAsync("authToken", result.Token);
+        await _authStorage.SetAsync("userName", result.FullName);
+        await _authStorage.SetAsync("userEmail", result.Email);
 
         _authState.SetAuthenticated(result.FullName, result.Email, result.Token);
 
@@ -60,9 +59,9 @@ public class AuthService
 
     public async Task LogoutAsync()
     {
-        await _localStorage.DeleteAsync("authToken");
-        await _localStorage.DeleteAsync("userName");
-        await _localStorage.DeleteAsync("userEmail");
+        await _authStorage.DeleteAsync("authToken");
+        await _authStorage.DeleteAsync("userName");
+        await _authStorage.DeleteAsync("userEmail");
         _authState.SetLoggedOut();
     }
 
@@ -70,7 +69,7 @@ public class AuthService
     {
         try
         {
-            var result = await _localStorage.GetAsync<string>("authToken");
+            var result = await _authStorage.GetAsync("authToken");
             return result.Success ? result.Value : null;
         }
         catch
@@ -89,9 +88,9 @@ public class AuthService
     {
         try
         {
-            var tokenResult = await _localStorage.GetAsync<string>("authToken");
-            var nameResult = await _localStorage.GetAsync<string>("userName");
-            var emailResult = await _localStorage.GetAsync<string>("userEmail");
+            var tokenResult = await _authStorage.GetAsync("authToken");
+            var nameResult = await _authStorage.GetAsync("userName");
+            var emailResult = await _authStorage.GetAsync("userEmail");
 
             if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
             {
@@ -111,4 +110,3 @@ public class AuthService
         }
     }
 }
-
