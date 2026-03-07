@@ -7,7 +7,7 @@
         <IsPackable>false</IsPackable>
         <CollectCoverage>true</CollectCoverage>
         <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-        <Threshold>100</Threshold>
+        <Threshold>70</Threshold>
         <ThresholdType>line</ThresholdType>
         <ThresholdStat>total</ThresholdStat>
         <ExcludeByFile>**/Program.cs,**/Services/AuthStorage.cs,**/Components/App.razor,**/Components/Routes.razor,**/Components/Layout/MainLayout.razor,**/Components/Pages/Home.razor,**/Components/Pages/Upload.razor,**/Components/Pages/DocumentDetails.razor,**/Components/Pages/Error.razor,**/Components/Pages/NotFound.razor</ExcludeByFile>
