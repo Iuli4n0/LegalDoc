@@ -12,6 +12,13 @@ namespace DocumentService.Infrastructure.Services;
 
 public class OllamaResumeService : IResumeGeneratorService
 {
+    private const int DefaultChunkSize = 8000;
+    private const int DefaultTimeoutSeconds = 90;
+    private const int SingleResumeMaxWords = 150;
+    private const int ChunkResumeMaxWords = 100;
+    private const int CombinedResumeMaxWords = 200;
+    private const double ChunkSplitThreshold = 0.8;
+    
     private readonly OllamaApiClient _ollamaClient;
     private readonly string _model;
     private readonly int _chunkSize;
@@ -23,7 +30,7 @@ public class OllamaResumeService : IResumeGeneratorService
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         _model = configuration["Ollama:Model"] ?? "llama3.1:latest";
-        _chunkSize = int.TryParse(configuration["Ollama:ChunkSize"], out var cs) ? cs : 8000;
+        _chunkSize = int.TryParse(configuration["Ollama:ChunkSize"], out var cs) ? cs : DefaultChunkSize;
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
@@ -65,7 +72,7 @@ public class OllamaResumeService : IResumeGeneratorService
     private async Task<string> GenerateSingleResumeAsync(string text, CancellationToken cancellationToken)
     {
         var prompt = $"""
-                      Generează un rezumat concis în limba română al următorului document (maxim 150 cuvinte):
+                      Generează un rezumat concis în limba română al următorului document (maxim {SingleResumeMaxWords} cuvinte):
 
                       {text}
                       """;
@@ -77,7 +84,7 @@ public class OllamaResumeService : IResumeGeneratorService
     {
         var prompt = $"""
                       Aceasta este partea {chunkNumber} din {totalChunks} ale unui document.
-                      Generează un rezumat concis în limba română al acestei părți (maxim 100 cuvinte):
+                      Generează un rezumat concis în limba română al acestei părți (maxim {ChunkResumeMaxWords} cuvinte):
 
                       {chunkText}
                       """;
@@ -90,7 +97,7 @@ public class OllamaResumeService : IResumeGeneratorService
         var combined = string.Join("\n\n", partialResumes.Select((r, i) => $"Rezumat partea {i + 1}: {r}"));
 
         var prompt = $"""
-                      Combină următoarele rezumate parțiale ale unui document într-un singur rezumat coerent în limba română (maxim 200 cuvinte):
+                      Combină următoarele rezumate parțiale ale unui document într-un singur rezumat coerent în limba română (maxim {CombinedResumeMaxWords} cuvinte):
 
                       {combined}
                       """;
@@ -102,7 +109,7 @@ public class OllamaResumeService : IResumeGeneratorService
     {
         try
         {
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             var sb = new StringBuilder();
@@ -122,8 +129,8 @@ public class OllamaResumeService : IResumeGeneratorService
         }
         catch (OperationCanceledException exception)
         {
-            _logger.LogError(exception, "Ollama request timed out after 90 seconds");
-            throw new TimeoutException("Ollama request timed out after 90 seconds.");
+            _logger.LogError(exception, "Ollama request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
+            throw new TimeoutException($"Ollama request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex)
         {
@@ -147,7 +154,7 @@ public class OllamaResumeService : IResumeGeneratorService
             if (remainingLength > chunkSize && length == chunkSize)
             {
                 var lastSpace = chunk.LastIndexOf(' ');
-                if (lastSpace > chunkSize * 0.8) // Nu tăia prea mult
+                if (lastSpace > chunkSize * ChunkSplitThreshold) // Nu tăia prea mult
                 {
                     chunk = chunk[..lastSpace];
                     length = lastSpace;

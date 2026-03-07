@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <ExcludeByFile>**/DocumentService.API/Program.cs,**/DocumentService.API/obj/**/*.cs,**/DocumentService.Infrastructure/Migrations/*.cs,**/DocumentService.Infrastructure/Persistence/AppDbContextFactory.cs,**/DocumentService.Infrastructure/Services/OllamaResumeService.cs</ExcludeByFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +14,8 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
         <PackageReference Include="Moq" Version="4.20.72" />
         <PackageReference Include="xunit" Version="2.9.3" />
@@ -20,8 +23,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\DocumentService.API\DocumentService.API.csproj" />
         <ProjectReference Include="..\DocumentService.Application\DocumentService.Application.csproj" />
         <ProjectReference Include="..\DocumentService.Domain\DocumentService.Domain.csproj" />
+        <ProjectReference Include="..\DocumentService.Infrastructure\DocumentService.Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>

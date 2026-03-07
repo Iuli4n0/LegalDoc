@@ -85,7 +85,10 @@ public class S3FileStorageService : IFileStorageService
             var response = await _s3Client.GetObjectAsync(request);
 
             var memoryStream = new MemoryStream();
-            await response.ResponseStream.CopyToAsync(memoryStream);
+            await using (response.ResponseStream)
+            {
+                await response.ResponseStream.CopyToAsync(memoryStream);
+            }
             memoryStream.Position = 0;
 
             _logger.LogInformation("Successfully downloaded file from S3. Key: {Key}, Size: {Size} bytes", s3Key, memoryStream.Length);

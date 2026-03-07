@@ -10,10 +10,14 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+const string corsPolicy = "AllowFrontend";
+const string defaultIssuer = "LegalDoc";
+const string defaultAudience = "LegalDoc";
+
 // CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy(corsPolicy, policy =>
     {
         policy.WithOrigins("http://localhost:5288", "https://localhost:7205")
               .AllowAnyHeader()
@@ -44,6 +48,9 @@ Console.WriteLine($"S3 Bucket: {builder.Configuration["AWS:BucketName"]}");
 
 // EF Core - PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+    throw new InvalidOperationException("Database connection string 'DefaultConnection' is not configured.");
+
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // Application services
@@ -69,8 +76,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"] ?? "LegalDoc",
-        ValidAudience = jwtSettings["Audience"] ?? "LegalDoc",
+        ValidIssuer = jwtSettings["Issuer"] ?? defaultIssuer,
+        ValidAudience = jwtSettings["Audience"] ?? defaultAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
     };
 });
@@ -89,7 +96,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.UseCors("AllowFrontend");
+app.UseCors(corsPolicy);
 
 app.UseAuthentication();
 app.UseAuthorization();

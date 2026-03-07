@@ -12,6 +12,8 @@ namespace IdentityService.API.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private const int InternalServerErrorStatusCode = 500;
+    
     private readonly IMediator _mediator;
 
     public AuthController(IMediator mediator)
@@ -34,13 +36,13 @@ public class AuthController : ControllerBase
             var response = await _mediator.Send(command);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
         {
             return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Registration failed: {ex.Message}" });
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Registration failed: {ex.Message}" });
         }
     }
 
@@ -64,7 +66,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Login failed: {ex.Message}" });
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Login failed: {ex.Message}" });
         }
     }
 
