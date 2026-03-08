@@ -13,12 +13,15 @@ const string corsPolicy = "AllowFrontend";
 const string defaultIssuer = "LegalDoc";
 const string defaultAudience = "LegalDoc";
 
-// CORS
+// CORS - origins read from config (env var: CorsOrigins)
+var corsOrigins = builder.Configuration["CorsOrigins"]
+    ?? "http://localhost:5288,https://localhost:7205";
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:5288", "https://localhost:7205")
+        policy.WithOrigins(corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries))
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -72,6 +75,13 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Apply EF Core migrations automatically at startup
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

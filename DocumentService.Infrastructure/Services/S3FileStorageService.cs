@@ -106,5 +106,33 @@ public class S3FileStorageService : IFileStorageService
             throw new InvalidOperationException($"Unexpected error downloading file: {ex.Message}", ex);
         }
     }
+
+    public async Task DeleteFileAsync(string s3Key)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting file from S3 with key {Key}", s3Key);
+
+            var request = new DeleteObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = s3Key
+            };
+
+            await _s3Client.DeleteObjectAsync(request);
+
+            _logger.LogInformation("Successfully deleted file from S3. Key: {Key}", s3Key);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            _logger.LogError(ex, "AWS S3 error deleting file with key {Key}. Error Code: {ErrorCode}", s3Key, ex.ErrorCode);
+            throw new InvalidOperationException($"Failed to delete file from S3: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deleting file with key {Key} from S3", s3Key);
+            throw new InvalidOperationException($"Unexpected error deleting file: {ex.Message}", ex);
+        }
+    }
 }
 

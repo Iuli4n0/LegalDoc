@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<PageTitle>LegalDoc - Înregistrare</PageTitle>
+<PageTitle>LegalDoc - Register</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
     <MudCard Elevation="4">
@@ -14,17 +14,17 @@
             <CardHeaderContent>
                 <MudText Typo="Typo.h4" Align="Align.Center">
                     <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2"/>
-                    Creează Cont
+                    Create Account
                 </MudText>
             </CardHeaderContent>
         </MudCardHeader>
         <MudCardContent>
             <MudForm @ref="_form" @bind-IsValid="_formValid">
                 <MudTextField @bind-Value="_fullName"
-                              Label="Nume complet"
+                              Label="Full Name"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Numele este obligatoriu"
+                              RequiredError="Full name is required"
                               Class="mb-3"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Person"/>
@@ -34,18 +34,18 @@
                               InputType="InputType.Email"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Email-ul este obligatoriu"
+                              RequiredError="Email is required"
                               Validation="@(new Func<string, string?>(ValidateEmail))"
                               Class="mb-3"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Email"/>
 
                 <MudTextField @bind-Value="_password"
-                              Label="Parolă"
+                              Label="Password"
                               InputType="@(_showPassword ? InputType.Text : InputType.Password)"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Parola este obligatorie"
+                              RequiredError="Password is required"
                               Validation="@(new Func<string, string?>(ValidatePassword))"
                               Class="mb-3"
                               Adornment="Adornment.End"
@@ -53,11 +53,11 @@
                               OnAdornmentClick="() => _showPassword = !_showPassword"/>
 
                 <MudTextField @bind-Value="_confirmPassword"
-                              Label="Confirmă parola"
+                              Label="Confirm Password"
                               InputType="@(_showConfirmPassword ? InputType.Text : InputType.Password)"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Confirmarea parolei este obligatorie"
+                              RequiredError="Password confirmation is required"
                               Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
                               Class="mb-3"
                               Adornment="Adornment.End"
@@ -80,16 +80,16 @@
                 @if (_loading)
                 {
                     <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <MudText Class="ms-2">Se creează contul...</MudText>
+                    <MudText Class="ms-2">Creating account...</MudText>
                 }
                 else
                 {
-                    <MudText>Creează cont</MudText>
+                    <MudText>Create Account</MudText>
                 }
             </MudButton>
             <MudText Align="Align.Center" Class="mt-4">
-                Ai deja cont?
-                <MudLink Href="/login" Color="Color.Primary">Autentifică-te</MudLink>
+                Already have an account?
+                <MudLink Href="/login" Color="Color.Primary">Sign in</MudLink>
             </MudText>
         </MudCardActions>
     </MudCard>
@@ -110,27 +110,27 @@
     private string? ValidateEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return "Email-ul este obligatoriu";
+            return "Email is required";
         if (!email.Contains('@') || !email.Contains('.'))
-            return "Email invalid";
+            return "Invalid email address";
         return null;
     }
 
     private string? ValidatePassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
-            return "Parola este obligatorie";
+            return "Password is required";
         if (password.Length < 6)
-            return "Parola trebuie să aibă minim 6 caractere";
+            return "Password must be at least 6 characters";
         return null;
     }
 
     private string? ValidateConfirmPassword(string confirmPassword)
     {
         if (string.IsNullOrWhiteSpace(confirmPassword))
-            return "Confirmarea parolei este obligatorie";
+            return "Please confirm your password";
         if (confirmPassword != _password)
-            return "Parolele nu coincid";
+            return "Passwords do not match";
         return null;
     }
 
@@ -152,7 +152,7 @@
             };
 
             await AuthService.RegisterAsync(request);
-            Snackbar.Add("Cont creat cu succes! Te poți autentifica.", Severity.Success);
+            Snackbar.Add("Account created successfully! You can now sign in.", Severity.Success);
             Navigation.NavigateTo("/login", forceLoad: false);
         }
         catch (InvalidOperationException ex)
@@ -161,7 +161,7 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Eroare la înregistrare: {ex.Message}";
+            _errorMessage = $"Registration error: {ex.Message}";
         }
         finally
         {
@@ -169,4 +169,3 @@
         }
     }
 }
-

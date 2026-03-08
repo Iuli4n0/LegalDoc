@@ -1,8 +1,11 @@
 using System;
 using System.Security.Claims;
+using DocumentService.Application.Commands.DeleteDocument;
 using DocumentService.Application.Commands.GenerateDocumentResume;
 using DocumentService.Application.Commands.UploadDocument;
+using DocumentService.Application.Queries.DownloadDocument;
 using DocumentService.Application.Queries.GetDocument;
+using DocumentService.Application.Queries.GetUserDocuments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -48,6 +51,25 @@ public class DocumentsController : ControllerBase
 
         var response = await _mediator.Send(command);
 
+        return Ok(response);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<GetUserDocumentsResponse>> GetUserDocuments(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string sortBy = "UploadedAt",
+        [FromQuery] bool ascending = false)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 10;
+
+        var query = new GetUserDocumentsQuery(userId, page, pageSize, sortBy, ascending);
+        var response = await _mediator.Send(query);
         return Ok(response);
     }
 
@@ -108,6 +130,60 @@ public class DocumentsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(InternalServerErrorStatusCode, $"Failed to generate resume: {ex.Message}");
+        }
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> DownloadDocument(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            var query = new DownloadDocumentQuery(id, userId);
+            var result = await _mediator.Send(query);
+            return File(result.Stream, result.ContentType, result.FileName);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to download document: {ex.Message}");
+        }
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteDocument(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            var command = new DeleteDocumentCommand(id, userId);
+            await _mediator.Send(command);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to delete document: {ex.Message}");
         }
     }
 

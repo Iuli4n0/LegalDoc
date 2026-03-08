@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using DocumentService.API.Controllers;
+using DocumentService.Application.Commands.DeleteDocument;
 using DocumentService.Application.Commands.GenerateDocumentResume;
 using DocumentService.Application.Commands.UploadDocument;
+using DocumentService.Application.Queries.DownloadDocument;
 using DocumentService.Application.Queries.GetDocument;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -267,6 +269,154 @@ public class DocumentsControllerTests
         var objectResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(500, objectResult.StatusCode);
         Assert.Contains("Failed to generate resume: boom", objectResult.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task Given_NoUser_When_DeleteDocument_Then_UnauthorizedIsReturned()
+    {
+        var controller = CreateControllerWithoutClaims();
+
+        var result = await controller.DeleteDocument(Guid.NewGuid());
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public async Task Given_ValidRequest_When_DeleteDocument_Then_NoContentIsReturned()
+    {
+        var controller = CreateControllerWithClaims(ClaimTypes.NameIdentifier, "user-1");
+        var id = Guid.NewGuid();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<DeleteDocumentCommand>(c => c.DocumentId == id && c.UserId == "user-1"), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(Unit.Value));
+
+        var result = await controller.DeleteDocument(id);
+
+        Assert.IsType<NoContentResult>(result);
+        _mediatorMock.Verify(m => m.Send(It.Is<DeleteDocumentCommand>(c => c.DocumentId == id && c.UserId == "user-1"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Given_DocumentNotFound_When_DeleteDocument_Then_NotFoundIsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+        var id = Guid.NewGuid();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DeleteDocumentCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException("Document not found."));
+
+        var result = await controller.DeleteDocument(id);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal("Document not found.", notFound.Value);
+    }
+
+    [Fact]
+    public async Task Given_DocumentOwnedByAnotherUser_When_DeleteDocument_Then_403IsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+        var id = Guid.NewGuid();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DeleteDocumentCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to delete this document."));
+
+        var result = await controller.DeleteDocument(id);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, objectResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_UnexpectedException_When_DeleteDocument_Then_500IsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DeleteDocumentCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("unexpected"));
+
+        var result = await controller.DeleteDocument(Guid.NewGuid());
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Contains("Failed to delete document: unexpected", objectResult.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task Given_NoUser_When_DownloadDocument_Then_UnauthorizedIsReturned()
+    {
+        var controller = CreateControllerWithoutClaims();
+
+        var result = await controller.DownloadDocument(Guid.NewGuid());
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public async Task Given_DocumentNotFound_When_DownloadDocument_Then_NotFoundIsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DownloadDocumentQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException("Document not found."));
+
+        var result = await controller.DownloadDocument(Guid.NewGuid());
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal("Document not found.", notFound.Value);
+    }
+
+    [Fact]
+    public async Task Given_DocumentOwnedByAnotherUser_When_DownloadDocument_Then_403IsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DownloadDocumentQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to download this document."));
+
+        var result = await controller.DownloadDocument(Guid.NewGuid());
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, objectResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_ValidRequest_When_DownloadDocument_Then_FileStreamResultIsReturned()
+    {
+        var controller = CreateControllerWithClaims(ClaimTypes.NameIdentifier, "user-1");
+        var id = Guid.NewGuid();
+        var stream = new MemoryStream([1, 2, 3]);
+
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<DownloadDocumentQuery>(q => q.Id == id && q.UserId == "user-1"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownloadDocumentResult(stream, "application/pdf", "doc.pdf"));
+
+        var result = await controller.DownloadDocument(id);
+
+        var fileResult = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal("application/pdf", fileResult.ContentType);
+        Assert.Equal("doc.pdf", fileResult.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task Given_UnexpectedException_When_DownloadDocument_Then_500IsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<DownloadDocumentQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("unexpected"));
+
+        var result = await controller.DownloadDocument(Guid.NewGuid());
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Contains("Failed to download document: unexpected", objectResult.Value?.ToString());
     }
 
     private DocumentsController CreateControllerWithClaims(string claimType = ClaimTypes.NameIdentifier, string claimValue = "user-1")

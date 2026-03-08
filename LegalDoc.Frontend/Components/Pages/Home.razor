@@ -1,45 +1,23 @@
-﻿page "/"
+@page "/"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Services
+@inject AuthService AuthService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
 
-<PageTitle>LegalDoc - Acasă</PageTitle>
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
 
-<MudText Typo="Typo.h3" GutterBottom="true">Bine ai venit la LegalDoc</MudText>
-<MudText Typo="Typo.body1" Class="mb-4">
-    Platformă pentru gestionarea și analiza documentelor legale.
-</MudText>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
 
-<MudGrid>
-    <MudItem xs="12" sm="6">
-        <MudCard>
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-2"/>Upload Document
-                    </MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudText>Încarcă un document legal pentru procesare și analiză.</MudText>
-            </MudCardContent>
-            <MudCardActions>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/upload">Mergi la Upload</MudButton>
-            </MudCardActions>
-        </MudCard>
-    </MudItem>
-    <MudItem xs="12" sm="6">
-        <MudCard>
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.FindInPage" Class="mr-2"/>Caută Document
-                    </MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudText>Caută un document după ID pentru a vedea detaliile și rezumatul.</MudText>
-            </MudCardContent>
-            <MudCardActions>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/documents">Mergi la Căutare</MudButton>
-            </MudCardActions>
-        </MudCard>
-    </MudItem>
-</MudGrid>
+        if (AuthState.IsAuthenticated)
+            Navigation.NavigateTo("/profile", forceLoad: false);
+        else
+            Navigation.NavigateTo("/login", forceLoad: false);
+    }
+}
