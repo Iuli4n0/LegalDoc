@@ -61,6 +61,8 @@ builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
 builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
+builder.Services.AddScoped<IClauseExtractorService, OllamaClauseExtractionService>();
+builder.Services.AddScoped<IClauseRepository, ClauseRepository>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

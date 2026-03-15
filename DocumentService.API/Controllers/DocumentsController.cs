@@ -1,10 +1,12 @@
 using System;
 using System.Security.Claims;
 using DocumentService.Application.Commands.DeleteDocument;
+using DocumentService.Application.Commands.GenerateDocumentClauses;
 using DocumentService.Application.Commands.GenerateDocumentResume;
 using DocumentService.Application.Commands.UploadDocument;
 using DocumentService.Application.Queries.DownloadDocument;
 using DocumentService.Application.Queries.GetDocument;
+using DocumentService.Application.Queries.GetDocumentClauses;
 using DocumentService.Application.Queries.GetUserDocuments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -130,6 +132,80 @@ public class DocumentsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(InternalServerErrorStatusCode, $"Failed to generate resume: {ex.Message}");
+        }
+    }
+
+    [HttpPost("{id:guid}/extract-clauses")]
+    public async Task<ActionResult<GenerateDocumentClausesResponse>> ExtractClauses(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            // Verify ownership before extracting clauses
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var command = new GenerateDocumentClausesCommand(id);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (NotSupportedException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(GatewayTimeoutStatusCode, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to extract clauses: {ex.Message}");
+        }
+    }
+
+    [HttpGet("{id:guid}/clauses")]
+    public async Task<ActionResult<GetDocumentClausesResponse>> GetDocumentClauses(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            // Verify ownership
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var clausesQuery = new GetDocumentClausesQuery(id);
+            var response = await _mediator.Send(clausesQuery);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to retrieve clauses: {ex.Message}");
         }
     }
 

@@ -37,7 +37,7 @@ public class LoginPageTests : TestContext
     {
         var cut = RenderComponent<Login>();
 
-        Assert.Contains("Autentificare", cut.Markup);
+        Assert.Contains("Sign In", cut.Markup);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class LoginPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateEmail", "");
 
-        Assert.Equal("Email-ul este obligatoriu", result);
+        Assert.Equal("Email is required", result);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class LoginPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateEmail", "invalid-email");
 
-        Assert.Equal("Email invalid", result);
+        Assert.Equal("Invalid email address", result);
     }
 
     [Fact]
