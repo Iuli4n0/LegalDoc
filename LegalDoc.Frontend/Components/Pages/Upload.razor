@@ -5,9 +5,18 @@
 @inject ApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject AuthService AuthService
+@inject AuthStateService AuthState
 @inject NavigationManager Navigation
 
-<PageTitle>Upload Document</PageTitle>
+<PageTitle>LegalDoc - Upload Document</PageTitle>
+
+@if (!_authReady)
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="0">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1">Initializing session...</MudText>
+    </MudPaper>
+}
 
 <MudText Typo="Typo.h4" GutterBottom="true">Upload Document</MudText>
 
@@ -21,7 +30,7 @@
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.AttachFile">
-                    Selectează Fișier
+                    Select File
                 </MudButton>
             </ActivatorContent>
         </MudFileUpload>
@@ -29,24 +38,24 @@
         @if (_selectedFile is not null)
         {
             <MudAlert Severity="Severity.Info" Class="mt-3">
-                <strong>Fișier selectat:</strong> @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                <strong>Selected file:</strong> @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
             </MudAlert>
         }
     </MudCardContent>
     <MudCardActions>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
-                   Disabled="@(_selectedFile is null || _uploading)"
+                   Disabled="@(!_authReady || _selectedFile is null || _uploading)"
                    OnClick="UploadFile"
                    StartIcon="@Icons.Material.Filled.CloudUpload">
             @if (_uploading)
             {
                 <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                <MudText Class="ms-2">Se încarcă...</MudText>
+                <MudText Class="ms-2">Uploading...</MudText>
             }
             else
             {
-                <MudText>Încarcă Document</MudText>
+                <MudText>Upload Document</MudText>
             }
         </MudButton>
     </MudCardActions>
@@ -55,30 +64,30 @@
 @if (_uploadResult is not null)
 {
     <MudAlert Severity="Severity.Success" Class="mb-4">
-        Documentul a fost încărcat cu succes!
+        Document uploaded successfully!
     </MudAlert>
 
     <MudCard>
         <MudCardHeader>
             <CardHeaderContent>
-                <MudText Typo="Typo.h6">Detalii Document</MudText>
+                <MudText Typo="Typo.h6">Document Details</MudText>
             </CardHeaderContent>
         </MudCardHeader>
         <MudCardContent>
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
                     <tr><td><strong>ID</strong></td><td>@_uploadResult.Id</td></tr>
-                    <tr><td><strong>Nume Fișier</strong></td><td>@_uploadResult.FileName</td></tr>
-                    <tr><td><strong>Tip Conținut</strong></td><td>@_uploadResult.ContentType</td></tr>
-                    <tr><td><strong>Dimensiune</strong></td><td>@FormatFileSize(_uploadResult.FileSize)</td></tr>
-                    <tr><td><strong>Data Upload</strong></td><td>@_uploadResult.UploadedAt.ToString("dd.MM.yyyy HH:mm")</td></tr>
+                    <tr><td><strong>File Name</strong></td><td>@_uploadResult.FileName</td></tr>
+                    <tr><td><strong>Content Type</strong></td><td>@_uploadResult.ContentType</td></tr>
+                    <tr><td><strong>Size</strong></td><td>@FormatFileSize(_uploadResult.FileSize)</td></tr>
+                    <tr><td><strong>Upload Date</strong></td><td>@_uploadResult.UploadedAt.ToString("dd.MM.yyyy HH:mm")</td></tr>
                 </tbody>
             </MudSimpleTable>
         </MudCardContent>
         <MudCardActions>
             <MudButton Variant="Variant.Text" Color="Color.Primary"
                        Href="@($"/documents/{_uploadResult.Id}")">
-                Vezi Detalii Document
+                View Document Details
             </MudButton>
         </MudCardActions>
     </MudCard>
@@ -87,18 +96,26 @@
 @code {
     private IBrowserFile? _selectedFile;
     private bool _uploading;
+    private bool _authReady;
     private UploadDocumentResponse? _uploadResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender) return;
+
+        if (!AuthState.IsAuthenticated)
         {
-            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            if (!isAuthenticated)
-            {
-                Navigation.NavigateTo("/login", forceLoad: false);
-            }
+            Navigation.NavigateTo("/login", forceLoad: false);
+            return;
         }
+
+        _authReady = true;
+        StateHasChanged();
     }
 
     private void OnFileSelected(IBrowserFile? file)
@@ -109,6 +126,9 @@
 
     private async Task UploadFile()
     {
+        if (!_authReady || !AuthState.IsAuthenticated)
+            return;
+
         if (_selectedFile is null) return;
 
         _uploading = true;
@@ -118,7 +138,7 @@
             var client = ApiClient.CreateClient();
 
             using var content = new MultipartFormDataContent();
-            var stream = _selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50MB
+            var stream = _selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
             var streamContent = new StreamContent(stream);
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
             content.Add(streamContent, "file", _selectedFile.Name);
@@ -128,17 +148,17 @@
             if (response.IsSuccessStatusCode)
             {
                 _uploadResult = await response.Content.ReadFromJsonAsync<UploadDocumentResponse>();
-                Snackbar.Add("Document încărcat cu succes!", Severity.Success);
+                Snackbar.Add("Document uploaded successfully!", Severity.Success);
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Eroare la upload: {error}", Severity.Error);
+                Snackbar.Add($"Upload error: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -159,4 +179,3 @@
         return $"{size:0.##} {sizes[order]}";
     }
 }
-

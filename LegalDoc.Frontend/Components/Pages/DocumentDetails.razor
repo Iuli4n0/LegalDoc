@@ -6,21 +6,33 @@
 @inject ApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject AuthService AuthService
+@inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject IJSRuntime JS
 
-<PageTitle>Detalii Document</PageTitle>
+<PageTitle>Document Details</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Caută Document</MudText>
+@if (!_authReady)
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="0">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1">Initializing session...</MudText>
+    </MudPaper>
+}
+
+<MudText Typo="Typo.h4" GutterBottom="true">Search Document</MudText>
 
 <MudCard Class="mb-4">
     <MudCardContent>
         <MudTextField @bind-Value="_searchId"
-                      Label="ID Document (GUID)"
-                      Placeholder="ex: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                      Label="Document ID (GUID)"
+                      Placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
                       Variant="Variant.Outlined"
                       Adornment="Adornment.End"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       OnAdornmentClick="SearchDocument"
+                      Disabled="@(!_authReady || _loading)"
                       Immediate="true"
                       OnKeyDown="OnSearchKeyDown"/>
     </MudCardContent>
@@ -28,16 +40,16 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="SearchDocument"
-                   Disabled="_loading"
+                   Disabled="@(_loading || !_authReady)"
                    StartIcon="@Icons.Material.Filled.Search">
             @if (_loading)
             {
                 <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                <MudText Class="ms-2">Se caută...</MudText>
+                <MudText Class="ms-2">Searching...</MudText>
             }
             else
             {
-                <MudText>Caută</MudText>
+                <MudText>Search</MudText>
             }
         </MudButton>
     </MudCardActions>
@@ -46,7 +58,7 @@
 @if (_notFound)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
-        Documentul nu a fost găsit.
+        Document not found.
     </MudAlert>
 }
 
@@ -65,10 +77,10 @@
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
                     <tr><td><strong>ID</strong></td><td>@_document.Id</td></tr>
-                    <tr><td><strong>Nume Fișier</strong></td><td>@_document.FileName</td></tr>
-                    <tr><td><strong>Tip Conținut</strong></td><td>@_document.ContentType</td></tr>
-                    <tr><td><strong>Dimensiune</strong></td><td>@FormatFileSize(_document.FileSize)</td></tr>
-                    <tr><td><strong>Data Upload</strong></td><td>@_document.UploadedAt.ToString("dd.MM.yyyy HH:mm")</td></tr>
+                    <tr><td><strong>File Name</strong></td><td>@_document.FileName</td></tr>
+                    <tr><td><strong>Content Type</strong></td><td>@_document.ContentType</td></tr>
+                    <tr><td><strong>Size</strong></td><td>@FormatFileSize(_document.FileSize)</td></tr>
+                    <tr><td><strong>Upload Date</strong></td><td>@_document.UploadedAt.ToString("dd.MM.yyyy HH:mm")</td></tr>
                 </tbody>
             </MudSimpleTable>
         </MudCardContent>
@@ -79,7 +91,7 @@
             <CardHeaderContent>
                 <MudText Typo="Typo.h6">
                     <MudIcon Icon="@Icons.Material.Filled.Summarize" Class="mr-2"/>
-                    Rezumat
+                    Summary
                 </MudText>
             </CardHeaderContent>
         </MudCardHeader>
@@ -87,34 +99,117 @@
             @if (!string.IsNullOrEmpty(_document.Resume))
             {
                 <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
-                    Generat la: @_document.ResumeGeneratedAt?.ToString("dd.MM.yyyy HH:mm")
+                    Generated at: @_document.ResumeGeneratedAt?.ToString("dd.MM.yyyy HH:mm")
                 </MudAlert>
                 <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_document.Resume</MudText>
             }
             else if (_generatingResume)
             {
                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2"/>
-                <MudText>Se generează rezumatul... Aceasta poate dura câteva minute.</MudText>
+                <MudText>Generating summary... This may take a few minutes.</MudText>
             }
             else
             {
-                <MudText Color="Color.Secondary">Niciun rezumat generat încă.</MudText>
+                <MudText Color="Color.Secondary">No summary generated yet.</MudText>
             }
         </MudCardContent>
         <MudCardActions>
             <MudButton Variant="Variant.Filled"
                        Color="Color.Secondary"
                        OnClick="GenerateResume"
-                       Disabled="_generatingResume"
+                       Disabled="@(_generatingResume || !_authReady)"
                        StartIcon="@Icons.Material.Filled.AutoAwesome">
                 @if (_generatingResume)
                 {
                     <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <MudText Class="ms-2">Se generează...</MudText>
+                    <MudText Class="ms-2">Generating...</MudText>
                 }
                 else
                 {
-                    <MudText>Generează Rezumat</MudText>
+                    <MudText>Generate Summary</MudText>
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       OnClick="DownloadDocument"
+                       Disabled="@(!_authReady || _downloading)"
+                       StartIcon="@Icons.Material.Filled.Download"
+                       Class="ml-2">
+                @if (_downloading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Downloading...</MudText>
+                }
+                else
+                {
+                    <MudText>Download Document</MudText>
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       OnClick="ConfirmDeleteDocument"
+                       Disabled="@(!_authReady || _deleting)"
+                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                       Class="ml-2">
+                Delete Document
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.Gavel" Class="mr-2"/>
+                    Clauses
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (_clauses.Count > 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                    Generated at: @_clausesGeneratedAt?.ToString("dd.MM.yyyy HH:mm")
+                    @if (_clausesChunksProcessed.HasValue)
+                    {
+                        <span> | Chunks processed: @_clausesChunksProcessed.Value</span>
+                    }
+                </MudAlert>
+                <MudList T="string" Dense="true">
+                    @foreach (var clause in _clauses)
+                    {
+                        <MudListItem T="string">@clause</MudListItem>
+                    }
+                </MudList>
+            }
+            else if (_extractingClauses)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2"/>
+                <MudText>Extracting clauses... This may take a few minutes.</MudText>
+            }
+            else if (_clausesExtractionAttempted)
+            {
+                <MudText Color="Color.Secondary">No clauses were found in this document.</MudText>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">No clauses extracted yet.</MudText>
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="ExtractClauses"
+                       Disabled="@(_extractingClauses || !_authReady)"
+                       StartIcon="@Icons.Material.Filled.Gavel">
+                @if (_extractingClauses)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Extracting...</MudText>
+                }
+                else
+                {
+                    <MudText>Extract Clauses</MudText>
                 }
             </MudButton>
         </MudCardActions>
@@ -129,27 +224,60 @@
     private bool _loading;
     private bool _notFound;
     private bool _generatingResume;
+    private bool _extractingClauses;
+    private bool _deleting;
+    private bool _downloading;
+    private bool _authReady;
+    private Guid? _pendingDocumentId;
     private GetDocumentResponse? _document;
+    private List<string> _clauses = [];
+    private DateTime? _clausesGeneratedAt;
+    private int? _clausesChunksProcessed;
+    private bool _clausesExtractionAttempted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender) return;
+
+        if (!AuthState.IsAuthenticated)
         {
-            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            if (!isAuthenticated)
-            {
-                Navigation.NavigateTo("/login", forceLoad: false);
-            }
+            Navigation.NavigateTo("/login", forceLoad: false);
+            return;
         }
+
+        _authReady = true;
+
+        if (_pendingDocumentId.HasValue)
+        {
+            await LoadDocument(_pendingDocumentId.Value);
+            _pendingDocumentId = null;
+        }
+
+        StateHasChanged();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync()
     {
         if (Id.HasValue)
         {
             _searchId = Id.Value.ToString();
-            await LoadDocument(Id.Value);
+
+            if (_authReady)
+            {
+                return LoadDocument(Id.Value);
+            }
+            else
+            {
+                _pendingDocumentId = Id.Value;
+            }
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task OnSearchKeyDown(KeyboardEventArgs e)
@@ -162,9 +290,12 @@
 
     private async Task SearchDocument()
     {
+        if (!_authReady || !AuthState.IsAuthenticated)
+            return;
+
         if (!Guid.TryParse(_searchId, out var id))
         {
-            Snackbar.Add("Te rog introdu un GUID valid.", Severity.Warning);
+            Snackbar.Add("Please enter a valid GUID.", Severity.Warning);
             return;
         }
 
@@ -173,9 +304,19 @@
 
     private async Task LoadDocument(Guid id)
     {
+        if (!_authReady || !AuthState.IsAuthenticated)
+        {
+            _pendingDocumentId = id;
+            return;
+        }
+
         _loading = true;
         _notFound = false;
         _document = null;
+        _clauses = [];
+        _clausesGeneratedAt = null;
+        _clausesChunksProcessed = null;
+        _clausesExtractionAttempted = false;
 
         try
         {
@@ -185,6 +326,26 @@
             if (response.IsSuccessStatusCode)
             {
                 _document = await response.Content.ReadFromJsonAsync<GetDocumentResponse>();
+                
+                // Fetch clauses
+                try
+                {
+                    var clausesResponse = await client.GetAsync($"/api/documents/{id}/clauses");
+                    if (clausesResponse.IsSuccessStatusCode)
+                    {
+                        var clausesResult = await clausesResponse.Content.ReadFromJsonAsync<GetDocumentClausesResponse>();
+                        if (clausesResult?.Clauses is not null && clausesResult.Clauses.Count > 0)
+                        {
+                            _clauses = clausesResult.Clauses;
+                            _clausesGeneratedAt = clausesResult.GeneratedAt;
+                            _clausesExtractionAttempted = true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to load clauses: {ex.Message}");
+                }
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -193,12 +354,12 @@
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Eroare: {error}", Severity.Error);
+                Snackbar.Add($"Error: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -208,6 +369,9 @@
 
     private async Task GenerateResume()
     {
+        if (!_authReady || !AuthState.IsAuthenticated)
+            return;
+
         if (_document is null) return;
 
         _generatingResume = true;
@@ -220,24 +384,169 @@
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<GenerateResumeResponse>();
-                Snackbar.Add($"Rezumat generat! ({result?.ChunksProcessed} chunk-uri procesate)", Severity.Success);
-
-                // Reload the document to get the updated resume
+                Snackbar.Add($"Summary generated! ({result?.ChunksProcessed} chunks processed)", Severity.Success);
                 await LoadDocument(_document.Id);
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Eroare la generare: {error}", Severity.Error);
+                Snackbar.Add($"Generation error: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
             _generatingResume = false;
+        }
+    }
+
+    private async Task ExtractClauses()
+    {
+        if (!_authReady || !AuthState.IsAuthenticated)
+            return;
+
+        if (_document is null) return;
+
+        _extractingClauses = true;
+
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.PostAsync($"/api/documents/{_document.Id}/extract-clauses", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ExtractClausesResponse>();
+                _clauses = result?.Clauses?.ToList() ?? [];
+                _clausesGeneratedAt = result?.GeneratedAt;
+                _clausesChunksProcessed = result?.ChunksProcessed;
+                _clausesExtractionAttempted = true;
+
+                if (_clauses.Count == 0)
+                {
+                    Snackbar.Add("Nu s-au gasit clauze in acest document.", Severity.Info);
+                }
+                else
+                {
+                    Snackbar.Add($"Clauses extracted! ({_clauses.Count} found)", Severity.Success);
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Clause extraction error: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _extractingClauses = false;
+        }
+    }
+
+    private async Task DownloadDocument()
+    {
+        if (_document is null) return;
+
+        _downloading = true;
+
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.GetAsync($"/api/documents/{_document.Id}/download");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var fileName = _document.FileName;
+                var contentType = _document.ContentType;
+
+                await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, contentType, bytes);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Snackbar.Add("Document not found.", Severity.Warning);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                Snackbar.Add("You do not have permission to download this document.", Severity.Error);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error downloading document: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+
+    private async Task ConfirmDeleteDocument()
+    {
+        if (_document is null) return;
+
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Message, $"Are you sure you want to permanently delete \"{_document.FileName}\"? This action cannot be undone and the file will be removed forever." },
+            { x => x.YesText, "Delete permanently" },
+            { x => x.CancelText, "Cancel" }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("⚠️ Delete Document", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await DeleteDocument(_document.Id);
+    }
+
+    private async Task DeleteDocument(Guid id)
+    {
+        _deleting = true;
+
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.DeleteAsync($"/api/documents/{id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Document deleted successfully.", Severity.Success);
+                Navigation.NavigateTo("/profile");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Snackbar.Add("Document not found.", Severity.Warning);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                Snackbar.Add("You do not have permission to delete this document.", Severity.Error);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error deleting document: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _deleting = false;
         }
     }
 
@@ -254,4 +563,3 @@
         return $"{size:0.##} {sizes[order]}";
     }
 }
-

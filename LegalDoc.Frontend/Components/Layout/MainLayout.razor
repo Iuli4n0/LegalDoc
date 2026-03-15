@@ -6,51 +6,54 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudThemeProvider/>
+<MudThemeProvider Theme="_theme" IsDarkMode="true"/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 
 <MudLayout>
-    <MudAppBar Elevation="1">
+    <MudAppBar Elevation="0" Dense="true" Style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-bottom: 1px solid rgba(255,255,255,0.06);">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer"/>
-        <MudText Typo="Typo.h5" Class="ml-3">LegalDoc</MudText>
+        <MudText Typo="Typo.h6" Class="ml-3" Style="font-weight: 700; letter-spacing: 0.5px;">
+            <MudIcon Icon="@Icons.Material.Filled.Gavel" Class="mr-2" Style="vertical-align: middle;"/>LegalDoc
+        </MudText>
         <MudSpacer/>
         @if (AuthState.IsAuthenticated)
         {
-            <MudText Class="mr-3" Typo="Typo.body2">@AuthState.UserName</MudText>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" OnClick="HandleLogout">
-                Deconectare
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.AccountCircle" Href="/profile"
+                       Style="text-transform: none; font-weight: 500;">
+                @AuthState.UserName
             </MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="HandleLogout" Title="Sign out"/>
         }
         else
         {
             <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login" Href="/login">
-                Autentificare
+                Sign In
             </MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/register" Class="ml-2">
-                Înregistrare
+                Register
             </MudButton>
         }
     </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
-        <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Acasă</MudNavLink>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="0" ClipMode="DrawerClipMode.Always"
+               Style="background: #0f1123; border-right: 1px solid rgba(255,255,255,0.06);">
+        <MudNavMenu Color="Color.Primary" Bordered="true" Class="mt-2">
             @if (AuthState.IsAuthenticated)
             {
                 <MudNavLink Href="/upload" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudUpload">Upload Document</MudNavLink>
-                <MudNavLink Href="/documents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FindInPage">Caută Document</MudNavLink>
+                <MudNavLink Href="/documents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FindInPage">Search Document</MudNavLink>
             }
             else
             {
-                <MudNavLink Href="/login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">Autentificare</MudNavLink>
-                <MudNavLink Href="/register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">Înregistrare</MudNavLink>
+                <MudNavLink Href="/login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">Sign In</MudNavLink>
+                <MudNavLink Href="/register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">Register</MudNavLink>
             }
         </MudNavMenu>
     </MudDrawer>
 
-    <MudMainContent Class="pt-16 px-4">
+    <MudMainContent Class="pt-16 px-4" Style="background: #0d1117; min-height: 100vh;">
         <MudContainer MaxWidth="MaxWidth.Large" Class="my-4">
             @Body
         </MudContainer>
@@ -66,14 +69,80 @@
 @code {
     private bool _drawerOpen = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private readonly MudTheme _theme = new()
     {
-        if (firstRender)
+        PaletteDark = new PaletteDark
         {
-            AuthState.OnChange += HandleAuthStateChanged;
-            await AuthService.InitializeAsync();
-            StateHasChanged();
+            Primary = "#5C6BC0",
+            PrimaryDarken = "#3949AB",
+            PrimaryLighten = "#7986CB",
+            Secondary = "#26A69A",
+            SecondaryDarken = "#00897B",
+            SecondaryLighten = "#4DB6AC",
+            Tertiary = "#AB47BC",
+            Info = "#42A5F5",
+            Success = "#66BB6A",
+            Warning = "#FFA726",
+            Error = "#EF5350",
+            Background = "#0d1117",
+            Surface = "#161b22",
+            DrawerBackground = "#0f1123",
+            AppbarBackground = "#1a1a2e",
+            AppbarText = "#e6edf3",
+            TextPrimary = "#e6edf3",
+            TextSecondary = "#8b949e",
+            ActionDefault = "#8b949e",
+            ActionDisabled = "rgba(139,148,158,0.3)",
+            ActionDisabledBackground = "rgba(139,148,158,0.12)",
+            Divider = "rgba(255,255,255,0.06)",
+            DividerLight = "rgba(255,255,255,0.03)",
+            TableLines = "rgba(255,255,255,0.06)",
+            LinesDefault = "rgba(255,255,255,0.06)",
+            HoverOpacity = 0.06,
+            Black = "#0d1117",
+            White = "#ffffff"
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "8px",
+            DrawerWidthLeft = "240px"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontSize = "0.875rem",
+                FontWeight = "400",
+                LineHeight = "1.5",
+                LetterSpacing = "0.00938em"
+            },
+            H4 = new H4Typography
+            {
+                FontWeight = "700",
+                FontSize = "1.75rem"
+            },
+            H5 = new H5Typography
+            {
+                FontWeight = "600",
+                FontSize = "1.35rem"
+            },
+            H6 = new H6Typography
+            {
+                FontWeight = "600",
+                FontSize = "1.1rem"
+            }
         }
+    };
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += HandleAuthStateChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
     }
 
     private void HandleAuthStateChanged()
@@ -84,7 +153,7 @@
     private async Task HandleLogout()
     {
         await AuthService.LogoutAsync();
-        Snackbar.Add("Te-ai deconectat cu succes.", Severity.Info);
+        Snackbar.Add("Signed out successfully.", Severity.Info);
         Navigation.NavigateTo("/login", forceLoad: false);
     }
 

@@ -156,5 +156,38 @@ public class DocumentModelsTests
         // Assert
         Assert.Equal(0, response.ChunksProcessed);
     }
-}
 
+    [Fact]
+    public void Given_ValidParameters_When_ExtractClausesResponseIsCreated_Then_ShouldStoreAllProperties()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        var generatedAt = DateTime.UtcNow;
+        IReadOnlyList<string> clauses = ["Clauza 1", "Clauza 2"];
+
+        // Act
+        var response = new ExtractClausesResponse(documentId, clauses, generatedAt, 4);
+
+        // Assert
+        Assert.Equal(documentId, response.DocumentId);
+        Assert.Equal(clauses, response.Clauses);
+        Assert.Equal(generatedAt, response.GeneratedAt);
+        Assert.Equal(4, response.ChunksProcessed);
+    }
+
+    [Fact]
+    public void Given_TwoExtractClausesResponsesWithSameData_When_Compared_Then_ShouldBeEqual()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        var generatedAt = DateTime.UtcNow;
+        IReadOnlyList<string> clauses = ["A", "B"];
+
+        // Act
+        var response1 = new ExtractClausesResponse(documentId, clauses, generatedAt, 2);
+        var response2 = new ExtractClausesResponse(documentId, clauses, generatedAt, 2);
+
+        // Assert
+        Assert.Equal(response1, response2);
+    }
+}

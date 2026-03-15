@@ -12,11 +12,11 @@ namespace DocumentService.Infrastructure.Services;
 
 public class OllamaResumeService : IResumeGeneratorService
 {
-    private const int DefaultChunkSize = 8000;
+    private const int DefaultChunkSize = 1000;
     private const int DefaultTimeoutSeconds = 90;
     private const int SingleResumeMaxWords = 150;
     private const int ChunkResumeMaxWords = 100;
-    private const int CombinedResumeMaxWords = 200;
+    private const int CombinedResumeMaxWords = 500;
     private const double ChunkSplitThreshold = 0.8;
     
     private readonly OllamaApiClient _ollamaClient;
@@ -148,25 +148,53 @@ public class OllamaResumeService : IResumeGeneratorService
         {
             var remainingLength = text.Length - currentIndex;
             var length = Math.Min(chunkSize, remainingLength);
-            var chunk = text.Substring(currentIndex, length);
 
-            // Încearcă să taie la ultimul spațiu din chunk pentru a nu tăia cuvintele
-            if (remainingLength > chunkSize && length == chunkSize)
+            // Dacă am luat tot textul rămas, nu mai trebuie să căutăm punct de tăiere
+            if (length >= remainingLength)
             {
-                var lastSpace = chunk.LastIndexOf(' ');
-                if (lastSpace > chunkSize * ChunkSplitThreshold) // Nu tăia prea mult
-                {
-                    chunk = chunk[..lastSpace];
-                    length = lastSpace;
-                }
+                chunks.Add(text.Substring(currentIndex, length).Trim());
+                break;
             }
 
-            chunks.Add(chunk);
+            var chunk = text.Substring(currentIndex, length);
+            var cutPoint = FindCutPoint(chunk, chunkSize);
+
+            if (cutPoint > 0)
+            {
+                chunk = chunk[..cutPoint];
+                length = cutPoint;
+            }
+
+            var trimmedChunk = chunk.Trim();
+            if (trimmedChunk.Length > 0)
+            {
+                chunks.Add(trimmedChunk);
+            }
+
             currentIndex += length;
         }
 
         return chunks;
     }
+
+    private static int FindCutPoint(string chunk, int chunkSize)
+    {
+        var splitThreshold = chunkSize * ChunkSplitThreshold;
+        var separators = new (int index, int offset)[]
+        {
+            (chunk.LastIndexOf("\n\n", StringComparison.Ordinal), 2),
+            (chunk.LastIndexOf('\n'), 1),
+            (chunk.LastIndexOf(' '), 0)
+        };
+
+        foreach (var (index, offset) in separators)
+        {
+            if (index > splitThreshold)
+            {
+                return index + offset;
+            }
+        }
+
+        return -1;
+    }
 }
-
-

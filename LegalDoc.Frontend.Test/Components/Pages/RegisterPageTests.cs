@@ -36,7 +36,7 @@ public class RegisterPageTests : TestContext
     {
         var cut = RenderComponent<Register>();
 
-        Assert.Contains("Creează Cont", cut.Markup);
+        Assert.Contains("Create Account", cut.Markup);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateEmail", "");
 
-        Assert.Equal("Email-ul este obligatoriu", result);
+        Assert.Equal("Email is required", result);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateEmail", "invalid-email");
 
-        Assert.Equal("Email invalid", result);
+        Assert.Equal("Invalid email address", result);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidatePassword", "");
 
-        Assert.Equal("Parola este obligatorie", result);
+        Assert.Equal("Password is required", result);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidatePassword", "123");
 
-        Assert.Equal("Parola trebuie să aibă minim 6 caractere", result);
+        Assert.Equal("Password must be at least 6 characters", result);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateConfirmPassword", "");
 
-        Assert.Equal("Confirmarea parolei este obligatorie", result);
+        Assert.Equal("Please confirm your password", result);
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class RegisterPageTests : TestContext
 
         var result = InvokePrivate<string?>(cut.Instance, "ValidateConfirmPassword", "654321");
 
-        Assert.Equal("Parolele nu coincid", result);
+        Assert.Equal("Passwords do not match", result);
     }
 
     [Fact]

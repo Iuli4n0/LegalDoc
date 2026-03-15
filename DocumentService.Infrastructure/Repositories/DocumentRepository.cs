@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using DocumentService.Domain.Entities;
@@ -31,6 +33,36 @@ public class DocumentRepository : IDocumentRepository
     {
         _dbContext.Documents.Update(document);
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(Document document)
+    {
+        _dbContext.Documents.Remove(document);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<Document>> GetByUserIdAsync(
+        string userId, int page, int pageSize, string sortBy, bool ascending)
+    {
+        var query = _dbContext.Documents.Where(d => d.UserId == userId);
+
+        query = sortBy?.ToLowerInvariant() switch
+        {
+            "filename"   => ascending ? query.OrderBy(d => d.FileName)   : query.OrderByDescending(d => d.FileName),
+            "filesize"   => ascending ? query.OrderBy(d => d.FileSize)   : query.OrderByDescending(d => d.FileSize),
+            "contentype" => ascending ? query.OrderBy(d => d.ContentType) : query.OrderByDescending(d => d.ContentType),
+            _            => ascending ? query.OrderBy(d => d.UploadedAt) : query.OrderByDescending(d => d.UploadedAt),
+        };
+
+        return await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountByUserIdAsync(string userId)
+    {
+        return await _dbContext.Documents.CountAsync(d => d.UserId == userId);
     }
 }
 

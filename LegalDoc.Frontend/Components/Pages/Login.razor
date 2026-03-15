@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<PageTitle>LegalDoc - Autentificare</PageTitle>
+<PageTitle>LegalDoc - Sign In</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
     <MudCard Elevation="4">
@@ -14,7 +14,7 @@
             <CardHeaderContent>
                 <MudText Typo="Typo.h4" Align="Align.Center">
                     <MudIcon Icon="@Icons.Material.Filled.Login" Class="mr-2"/>
-                    Autentificare
+                    Sign In
                 </MudText>
             </CardHeaderContent>
         </MudCardHeader>
@@ -25,18 +25,18 @@
                               InputType="InputType.Email"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Email-ul este obligatoriu"
+                              RequiredError="Email is required"
                               Validation="@(new Func<string, string?>(ValidateEmail))"
                               Class="mb-3"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Email"/>
 
                 <MudTextField @bind-Value="_password"
-                              Label="Parolă"
+                              Label="Password"
                               InputType="@(_showPassword ? InputType.Text : InputType.Password)"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Parola este obligatorie"
+                              RequiredError="Password is required"
                               Class="mb-3"
                               Adornment="Adornment.End"
                               AdornmentIcon="@(_showPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
@@ -58,16 +58,16 @@
                 @if (_loading)
                 {
                     <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <MudText Class="ms-2">Se autentifică...</MudText>
+                    <MudText Class="ms-2">Signing in...</MudText>
                 }
                 else
                 {
-                    <MudText>Intră în cont</MudText>
+                    <MudText>Sign In</MudText>
                 }
             </MudButton>
             <MudText Align="Align.Center" Class="mt-4">
-                Nu ai cont?
-                <MudLink Href="/register" Color="Color.Primary">Creează un cont</MudLink>
+                Don't have an account?
+                <MudLink Href="/register" Color="Color.Primary">Create one</MudLink>
             </MudText>
         </MudCardActions>
     </MudCard>
@@ -85,9 +85,9 @@
     private string? ValidateEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return "Email-ul este obligatoriu";
+            return "Email is required";
         if (!email.Contains('@') || !email.Contains('.'))
-            return "Email invalid";
+            return "Invalid email address";
         return null;
     }
 
@@ -108,16 +108,16 @@
             };
 
             await AuthService.LoginAsync(request);
-            Snackbar.Add("Autentificare reușită!", Severity.Success);
+            Snackbar.Add("Signed in successfully!", Severity.Success);
             Navigation.NavigateTo("/", forceLoad: false);
         }
         catch (UnauthorizedAccessException)
         {
-            _errorMessage = "Email sau parolă incorectă.";
+            _errorMessage = "Incorrect email or password.";
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Eroare la autentificare: {ex.Message}";
+            _errorMessage = $"Sign in error: {ex.Message}";
         }
         finally
         {

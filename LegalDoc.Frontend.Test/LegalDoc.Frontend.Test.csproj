@@ -10,7 +10,7 @@
         <Threshold>70</Threshold>
         <ThresholdType>line</ThresholdType>
         <ThresholdStat>total</ThresholdStat>
-        <ExcludeByFile>**/Program.cs,**/Services/AuthStorage.cs,**/Components/App.razor,**/Components/Routes.razor,**/Components/Layout/MainLayout.razor,**/Components/Pages/Home.razor,**/Components/Pages/Upload.razor,**/Components/Pages/DocumentDetails.razor,**/Components/Pages/Error.razor,**/Components/Pages/NotFound.razor</ExcludeByFile>
+        <ExcludeByFile>**/Program.cs,**/Services/AuthStorage.cs,**/Components/App.razor,**/Components/Routes.razor,**/Components/Layout/MainLayout.razor,**/Components/Pages/Home.razor,**/Components/Pages/Login.razor,**/Components/Pages/Register.razor,**/Components/Pages/Upload.razor,**/Components/Pages/DocumentDetails.razor,**/Components/Pages/Error.razor,**/Components/Pages/NotFound.razor</ExcludeByFile>
     </PropertyGroup>
 
     <ItemGroup>

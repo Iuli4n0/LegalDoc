@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<Clause> Clauses => Set<Clause>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +26,18 @@ public class AppDbContext : DbContext
             entity.Property(d => d.UploadedAt).IsRequired();
             entity.Property(d => d.Resume).HasColumnType("text");
             entity.Property(d => d.ResumeGeneratedAt);
+        });
+
+        modelBuilder.Entity<Clause>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Text).IsRequired();
+            entity.Property(c => c.ExtractedAt).IsRequired();
+
+            entity.HasOne(c => c.Document)
+                .WithMany()
+                .HasForeignKey(c => c.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
