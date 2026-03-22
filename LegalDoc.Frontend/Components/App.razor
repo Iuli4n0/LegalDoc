@@ -1,17 +1,25 @@
-﻿<!DOCTYPE html>
+﻿@inject IConfiguration Configuration
+
+@{
+    var pathBase = NormalizePathBase(Configuration["PathBase"]);
+    var baseHref = string.IsNullOrEmpty(pathBase) ? "/" : $"{pathBase}/";
+}
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <base href="/"/>
+    <base href="@baseHref"/>
     <title>LegalDoc - Document Management</title>
     <ResourcePreloader/>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet"/>
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet"/>
-    <link rel="stylesheet" href="@Assets["app.css"]"/>
-    <link rel="stylesheet" href="@Assets["LegalDoc.Frontend.styles.css"]"/>
+    <link rel="stylesheet" href="@PrefixForPathBase(pathBase, Assets["app.css"])"/>
+    <link rel="stylesheet" href="@PrefixForPathBase(pathBase, Assets["LegalDoc.Frontend.styles.css"])"/>
     <ImportMap/>
     <HeadOutlet/>
 </head>
@@ -21,7 +29,41 @@
 <ReconnectModal/>
 <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 <script src="app.js"></script>
-<script src="@Assets["_framework/blazor.web.js"]"></script>
+<script src="@PrefixForPathBase(pathBase, Assets["_framework/blazor.web.js"])" ></script>
 </body>
 
 </html>
+
+@code {
+    // @Assets can emit root-relative URLs; prepend PathBase when needed.
+    private static string PrefixForPathBase(string pathBase, string url)
+    {
+        if (string.IsNullOrEmpty(pathBase) || string.IsNullOrWhiteSpace(url))
+        {
+            return url;
+        }
+
+        if (url.StartsWith(pathBase + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        return url.StartsWith('/') ? pathBase + url : url;
+    }
+
+    private static string NormalizePathBase(string? pathBase)
+    {
+        if (string.IsNullOrWhiteSpace(pathBase))
+        {
+            return string.Empty;
+        }
+
+        var normalized = pathBase.Trim();
+        if (!normalized.StartsWith('/'))
+        {
+            normalized = "/" + normalized;
+        }
+
+        return normalized.TrimEnd('/');
+    }
+}

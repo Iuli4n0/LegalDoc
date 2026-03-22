@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,8 @@ public class OllamaResumeService : IResumeGeneratorService
         _logger = logger;
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
-        _model = configuration["Ollama:Model"] ?? "llama3.1:latest";
+        var configuredModel = configuration["Ollama:Model"];
+        _model = string.IsNullOrWhiteSpace(configuredModel) ? "llama3.1:latest" : configuredModel.Trim();
         _chunkSize = int.TryParse(configuration["Ollama:ChunkSize"], out var cs) ? cs : DefaultChunkSize;
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
@@ -120,12 +122,22 @@ public class OllamaResumeService : IResumeGeneratorService
                 Prompt = prompt
             }, linkedCts.Token))
             {
-                sb.Append(stream.Response);
+                if (!string.IsNullOrEmpty(stream?.Response))
+                {
+                    sb.Append(stream.Response);
+                }
             }
 
             var result = sb.ToString().Trim();
             _logger.LogInformation("Ollama response received: {CharCount} characters", result.Length);
             return result;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            _logger.LogError(ex, "Ollama returned 404. Model '{Model}' is likely missing; run `ollama pull {Model}`.", _model, _model);
+            throw new InvalidOperationException(
+                $"Ollama model '{_model}' is not available. Pull it first (example: ollama pull {_model}).",
+                ex);
         }
         catch (OperationCanceledException exception)
         {
