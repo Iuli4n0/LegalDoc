@@ -50,3 +50,5 @@ docker compose down
 ```zsh
 dotnet test LegalDoc.sln
 ```
+
+## Clone classifier from here https://github.com/Iuli4n0/romanian-bert-clauses-classifier
