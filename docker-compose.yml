@@ -1,0 +1,167 @@
+services:
+  # ── Infrastructure ────────────────────────────────────
+
+  postgres:
+    image: postgres:17
+    container_name: legaldoc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: legaldoc-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_HOST_PORT:-11435}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: legaldoc-ollama-init
+    restart: "no"
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+    command: ["pull", "${OLLAMA_MODEL:-llama3.1:latest}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  # ── Application Services ──────────────────────────────
+
+  identity-service:
+    container_name: legaldoc-identity
+    build:
+      context: .
+      dockerfile: IdentityService.API/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${IDENTITY_HOST_PORT:-5164}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      UseHttpsRedirection: "false"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=legaldoc_identity_dev;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      JwtSettings__Secret: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+      JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      CorsOrigins: "http://localhost:8080,http://frontend:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  document-service:
+    container_name: legaldoc-document
+    build:
+      context: .
+      dockerfile: DocumentService.API/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${DOCUMENT_HOST_PORT:-5163}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      UseHttpsRedirection: "false"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=legaldoc_dev;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      JwtSettings__Secret: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+      JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      AWS__Region: ${AWS_REGION}
+      AWS__BucketName: ${AWS_BUCKET_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      Ollama__Endpoint: "http://ollama:11434"
+      Ollama__Model: "${OLLAMA_MODEL:-llama3.1:latest}"
+      Ollama__ChunkSize: "${OLLAMA_CHUNK_SIZE:-8000}"
+      CorsOrigins: "http://localhost:8080,http://frontend:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    container_name: legaldoc-frontend
+    build:
+      context: .
+      dockerfile: LegalDoc.Frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      UseHttpsRedirection: "false"
+      DetailedErrors: "${FRONTEND_DETAILED_ERRORS:-false}"
+      DataProtection__KeysPath: "/app/.aspnet/DataProtection-Keys"
+      PathBase: "${FRONTEND_PATH_BASE:-}"
+      DocumentServiceUrl: "http://document-service:8080"
+      IdentityServiceUrl: "http://identity-service:8080"
+    volumes:
+      - frontend-dpkeys:/app/.aspnet/DataProtection-Keys
+    depends_on:
+      identity-service:
+        condition: service_started
+      document-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  classifier:
+    container_name: legaldoc-classifier
+    build:
+      context: ./classifier
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${CLASSIFIER_HOST_PORT:-8000}:8000"
+    environment:
+      MODEL_PATH: ./model_clauze_abuzive
+      HOST: "0.0.0.0"
+      PORT: "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+volumes:
+  postgres-data:
+  ollama-data:
+  frontend-dpkeys:

@@ -75,7 +75,7 @@
                        Color="Color.Primary"
                        FullWidth="true"
                        Size="Size.Large"
-                       Disabled="@(!_formValid || _loading)"
+                       Disabled="@_loading"
                        OnClick="HandleRegister">
                 @if (_loading)
                 {
