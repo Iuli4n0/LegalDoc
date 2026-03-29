@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using DocumentService.Application.Commands.ClassifyDocumentClauses;
 using DocumentService.Application.Commands.DeleteDocument;
@@ -24,10 +25,12 @@ public class DocumentsController : ControllerBase
     private const int InternalServerErrorStatusCode = 500;
     
     private readonly IMediator _mediator;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public DocumentsController(IMediator mediator)
+    public DocumentsController(IMediator mediator, IHttpClientFactory httpClientFactory)
     {
         _mediator = mediator;
+        _httpClientFactory = httpClientFactory;
     }
 
     [HttpPost("upload")]
@@ -41,6 +44,38 @@ public class DocumentsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
+        // Check user limits via IdentityService
+        try
+        {
+            var identityClient = CreateIdentityClient();
+            var limitsResponse = await identityClient.GetAsync($"/api/auth/users/{userId}/limits");
+            
+            if (limitsResponse.IsSuccessStatusCode)
+            {
+                var limits = await limitsResponse.Content.ReadFromJsonAsync<UserLimitsDto>();
+                if (limits is not null)
+                {
+                    // Check document count limit
+                    if (!limits.CanUpload)
+                    {
+                        return BadRequest($"Document limit reached. You have uploaded {limits.TotalDocumentsUploaded} of {limits.MaxDocuments} allowed documents.");
+                    }
+
+                    // Check file size limit
+                    var maxSizeBytes = (long)limits.MaxDocumentSizeMb * 1024 * 1024;
+                    if (file.Length > maxSizeBytes)
+                    {
+                        return BadRequest($"File size ({file.Length / (1024 * 1024.0):F1} MB) exceeds the maximum allowed size of {limits.MaxDocumentSizeMb} MB.");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not check user limits: {ex.Message}");
+            // Continue with upload even if limit check fails (fail-open for availability)
+        }
+
         await using var stream = file.OpenReadStream();
         
         var command = new UploadDocumentCommand
@@ -53,6 +88,17 @@ public class DocumentsController : ControllerBase
         };
 
         var response = await _mediator.Send(command);
+
+        // Increment document count in IdentityService
+        try
+        {
+            var identityClient = CreateIdentityClient();
+            await identityClient.PostAsync($"/api/auth/users/{userId}/increment-documents", null);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not increment document count: {ex.Message}");
+        }
 
         return Ok(response);
     }
@@ -308,9 +354,23 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    private HttpClient CreateIdentityClient()
+    {
+        var client = _httpClientFactory.CreateClient("IdentityAPI");
+        var authHeader = HttpContext.Request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authHeader);
+        }
+        return client;
+    }
+
     private string? GetUserId()
     {
         return User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                ?? User.FindFirst("sub")?.Value;
     }
 }
+
+// DTO for IdentityService limits response
+public record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);

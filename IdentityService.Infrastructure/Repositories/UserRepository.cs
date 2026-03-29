@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using IdentityService.Application.Abstractions;
 using IdentityService.Domain.Entities;
@@ -44,5 +45,9 @@ public class UserRepository : IUserRepository
         var normalizedEmail = email.ToLowerInvariant();
         return await _dbContext.Users.AnyAsync(u => u.Email == normalizedEmail);
     }
-}
 
+    public async Task<IEnumerable<User>> GetAllAsync()
+    {
+        return await _dbContext.Users.OrderBy(u => u.CreatedAt).ToListAsync();
+    }
+}

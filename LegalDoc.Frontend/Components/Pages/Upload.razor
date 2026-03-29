@@ -20,16 +20,59 @@
 
 <MudText Typo="Typo.h4" GutterBottom="true">Upload Document</MudText>
 
+@if (_limits is not null)
+{
+    var percentUsed = _limits.MaxDocuments > 0 
+        ? (double)_limits.TotalDocumentsUploaded / _limits.MaxDocuments * 100 
+        : 100;
+
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Upload Quota</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body1">
+                        Documents Uploaded: <strong>@_limits.TotalDocumentsUploaded / @_limits.MaxDocuments</strong>
+                    </MudText>
+                    <MudProgressLinear Color="@(percentUsed >= 100 ? Color.Error : percentUsed >= 80 ? Color.Warning : Color.Success)" 
+                                       Value="@percentUsed" 
+                                       Class="my-2" />
+                    @if (!_limits.CanUpload)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-2 text-sm">
+                            You have reached your maximum document limit.
+                        </MudAlert>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body1" Class="mb-2">
+                        Maximum File Size: <strong>@_limits.MaxDocumentSizeMb MB</strong>
+                    </MudText>
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="text-sm">
+                        Deleted documents still count towards your upload total.
+                    </MudAlert>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+}
+
 <MudCard Class="mb-4">
     <MudCardContent>
         <MudFileUpload T="IBrowserFile" 
                        Accept=".pdf,.doc,.docx,.txt" 
                        MaximumFileCount="1"
-                       FilesChanged="OnFileSelected">
+                       FilesChanged="OnFileSelected"
+                       Disabled="@(_limits is not null && !_limits.CanUpload)">
             <ActivatorContent>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.AttachFile">
+                           StartIcon="@Icons.Material.Filled.AttachFile"
+                           Disabled="@(_limits is not null && !_limits.CanUpload)">
                     Select File
                 </MudButton>
             </ActivatorContent>
@@ -37,15 +80,20 @@
 
         @if (_selectedFile is not null)
         {
-            <MudAlert Severity="Severity.Info" Class="mt-3">
+            var isTooLarge = _limits is not null && (_selectedFile.Size > _limits.MaxDocumentSizeMb * 1024 * 1024);
+            <MudAlert Severity="@(isTooLarge ? Severity.Error : Severity.Info)" Class="mt-3">
                 <strong>Selected file:</strong> @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                @if (isTooLarge)
+                {
+                    <br/><span class="mt-1 d-block">File exceeds the maximum allowed size of @_limits!.MaxDocumentSizeMb MB.</span>
+                }
             </MudAlert>
         }
     </MudCardContent>
     <MudCardActions>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
-                   Disabled="@(!_authReady || _selectedFile is null || _uploading)"
+                   Disabled="@(!_authReady || _selectedFile is null || _uploading || (_limits is not null && (!_limits.CanUpload || _selectedFile.Size > _limits.MaxDocumentSizeMb * 1024 * 1024)))"
                    OnClick="UploadFile"
                    StartIcon="@Icons.Material.Filled.CloudUpload">
             @if (_uploading)
@@ -98,6 +146,7 @@
     private bool _uploading;
     private bool _authReady;
     private UploadDocumentResponse? _uploadResult;
+    private UserLimitsResponse? _limits;
 
     protected override async Task OnInitializedAsync()
     {
@@ -116,6 +165,25 @@
 
         _authReady = true;
         StateHasChanged();
+        
+        await LoadLimits();
+    }
+
+    private async Task LoadLimits()
+    {
+        try
+        {
+            var identityClient = ApiClient.CreateIdentityClient();
+            var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(AuthState.Token);
+            var userId = jwt.Claims.First(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier || c.Type == "sub").Value;
+            
+            _limits = await identityClient.GetFromJsonAsync<UserLimitsResponse>($"/api/auth/users/{userId}/limits");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not load limits: {ex.Message}");
+        }
     }
 
     private void OnFileSelected(IBrowserFile? file)
@@ -130,6 +198,18 @@
             return;
 
         if (_selectedFile is null) return;
+        
+        if (_limits is not null && !_limits.CanUpload)
+        {
+            Snackbar.Add("You have reached your maximum document limit.", Severity.Error);
+            return;
+        }
+
+        if (_limits is not null && _selectedFile.Size > _limits.MaxDocumentSizeMb * 1024 * 1024)
+        {
+            Snackbar.Add($"File exceeds the maximum allowed size of {_limits.MaxDocumentSizeMb} MB.", Severity.Error);
+            return;
+        }
 
         _uploading = true;
 
@@ -149,6 +229,7 @@
             {
                 _uploadResult = await response.Content.ReadFromJsonAsync<UploadDocumentResponse>();
                 Snackbar.Add("Document uploaded successfully!", Severity.Success);
+                await LoadLimits(); // Refresh limits after successful upload
             }
             else
             {

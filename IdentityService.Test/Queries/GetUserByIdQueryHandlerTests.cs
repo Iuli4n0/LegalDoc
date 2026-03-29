@@ -37,6 +37,10 @@ public class GetUserByIdQueryHandlerTests
         Assert.Equal("Ion Popescu", result.FullName);
         Assert.Equal(user.CreatedAt, result.CreatedAt);
         Assert.Null(result.LastLoginAt);
+        Assert.Equal(user.Role, result.Role);
+        Assert.Equal(user.TotalDocumentsUploaded, result.TotalDocumentsUploaded);
+        Assert.Equal(user.MaxDocuments, result.MaxDocuments);
+        Assert.Equal(user.MaxDocumentSizeMb, result.MaxDocumentSizeMb);
     }
 
     [Fact]

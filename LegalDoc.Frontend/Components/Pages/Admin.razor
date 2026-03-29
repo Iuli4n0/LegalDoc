@@ -1,0 +1,214 @@
+@page "/admin"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Models
+@using LegalDoc.Frontend.Services
+@inject ApiClient ApiClient
+@inject AuthService AuthService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>LegalDoc - Admin Panel</PageTitle>
+
+@if (!_authReady)
+{
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1">Initializing session...</MudText>
+    </MudPaper>
+}
+else if (!AuthState.IsAdmin)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">
+        <MudIcon Icon="@Icons.Material.Filled.Block" Class="mr-2"/>
+        You do not have permission to access this page.
+    </MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-2"/>
+        Admin Panel
+    </MudText>
+
+    <MudText Typo="Typo.h5" GutterBottom="true" Class="mt-4">
+        <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2"/>
+        User Management
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudPaper Class="pa-4" Elevation="0">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+            <MudText Typo="Typo.body1">Loading users...</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudTable Items="_users" Dense="false" Hover="true" Striped="false" Bordered="false">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">All Users</MudText>
+                <MudSpacer/>
+                <MudTooltip Text="Refresh">
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                   OnClick="LoadUsers"
+                                   Color="Color.Default"/>
+                </MudTooltip>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh>Registered</MudTh>
+                <MudTh>Last Login</MudTh>
+                <MudTh>Docs Uploaded</MudTh>
+                <MudTh>Max Docs</MudTh>
+                <MudTh>Max Size (MB)</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.FullName</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Role">
+                    <MudChip T="string" 
+                             Color="@(context.Role == "Admin" ? Color.Warning : Color.Default)" 
+                             Size="Size.Small">
+                        @context.Role
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Registered">@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+                <MudTd DataLabel="Last Login">@(context.LastLoginAt?.ToString("dd.MM.yyyy HH:mm") ?? "Never")</MudTd>
+                <MudTd DataLabel="Docs Uploaded">
+                    <MudChip T="string"
+                             Color="@(context.TotalDocumentsUploaded >= context.MaxDocuments ? Color.Error : Color.Success)"
+                             Size="Size.Small">
+                        @context.TotalDocumentsUploaded / @context.MaxDocuments
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Max Docs">@context.MaxDocuments</MudTd>
+                <MudTd DataLabel="Max Size (MB)">@context.MaxDocumentSizeMb MB</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="@(() => OpenEditLimitsDialog(context))">
+                        Edit Limits
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4" Color="Color.Secondary">No users found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    }
+}
+
+@code {
+    private bool _authReady;
+    private bool _loading;
+    private List<AdminUserDto> _users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: false);
+            return;
+        }
+
+        if (!AuthState.IsAdmin)
+        {
+            _authReady = true;
+            StateHasChanged();
+            return;
+        }
+
+        _authReady = true;
+        StateHasChanged();
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var client = ApiClient.CreateIdentityClient();
+            var response = await client.GetFromJsonAsync<GetAllUsersResponse>("/api/auth/users");
+
+            if (response?.Users is not null)
+            {
+                _users = response.Users.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading users: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenEditLimitsDialog(AdminUserDto user)
+    {
+        var parameters = new DialogParameters<EditLimitsDialog>
+        {
+            { x => x.MaxDocuments, user.MaxDocuments },
+            { x => x.MaxDocumentSizeMb, user.MaxDocumentSizeMb },
+            { x => x.UserName, user.FullName }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditLimitsDialog>("Edit User Limits", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: EditLimitsDialog.EditLimitsResult limitsResult })
+        {
+            await UpdateUserLimits(user.Id, limitsResult.MaxDocuments, limitsResult.MaxDocumentSizeMb);
+        }
+    }
+
+    private async Task UpdateUserLimits(Guid userId, int maxDocuments, int maxDocumentSizeMb)
+    {
+        try
+        {
+            var client = ApiClient.CreateIdentityClient();
+            var request = new UpdateUserLimitsRequest
+            {
+                MaxDocuments = maxDocuments,
+                MaxDocumentSizeMb = maxDocumentSizeMb
+            };
+
+            var response = await client.PutAsJsonAsync($"/api/auth/users/{userId}/limits", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("User limits updated successfully.", Severity.Success);
+                await LoadUsers();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error updating limits: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+}

@@ -1,6 +1,10 @@
 using System;
+using IdentityService.Application.Commands.IncrementDocumentCount;
 using IdentityService.Application.Commands.LoginUser;
 using IdentityService.Application.Commands.RegisterUser;
+using IdentityService.Application.Commands.UpdateUserLimits;
+using IdentityService.Application.Queries.CheckUserLimits;
+using IdentityService.Application.Queries.GetAllUsers;
 using IdentityService.Application.Queries.GetUserById;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -103,9 +107,91 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
+
+    // ── Admin endpoints ──────────────────────────────────────
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users")]
+    public async Task<ActionResult<GetAllUsersResponse>> GetAllUsers()
+    {
+        try
+        {
+            var query = new GetAllUsersQuery();
+            var response = await _mediator.Send(query);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Failed to retrieve users: {ex.Message}" });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("users/{id:guid}/limits")]
+    public async Task<IActionResult> UpdateUserLimits(Guid id, [FromBody] UpdateUserLimitsRequest request)
+    {
+        try
+        {
+            var command = new UpdateUserLimitsCommand(id, request.MaxDocuments, request.MaxDocumentSizeMb);
+            await _mediator.Send(command);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Failed to update limits: {ex.Message}" });
+        }
+    }
+
+    [Authorize]
+    [HttpGet("users/{id:guid}/limits")]
+    public async Task<ActionResult<CheckUserLimitsResponse>> CheckUserLimits(Guid id)
+    {
+        try
+        {
+            var query = new CheckUserLimitsQuery(id);
+            var response = await _mediator.Send(query);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Failed to check limits: {ex.Message}" });
+        }
+    }
+
+    [Authorize]
+    [HttpPost("users/{id:guid}/increment-documents")]
+    public async Task<ActionResult<IncrementDocumentCountResponse>> IncrementDocumentCount(Guid id)
+    {
+        try
+        {
+            var command = new IncrementDocumentCountCommand(id);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, new { message = $"Failed to increment count: {ex.Message}" });
+        }
+    }
 }
 
 // Request DTOs
 public record RegisterRequest(string Email, string Password, string FullName);
 public record LoginRequest(string Email, string Password);
-
+public record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);

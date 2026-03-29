@@ -21,15 +21,24 @@ public class ApiClient
     public HttpClient CreateClient()
     {
         var client = _httpClientFactory.CreateClient("API");
+        ApplyAuth(client);
+        return client;
+    }
 
+    public HttpClient CreateIdentityClient()
+    {
+        var client = _httpClientFactory.CreateClient("IdentityAPI");
+        ApplyAuth(client);
+        return client;
+    }
+
+    private void ApplyAuth(HttpClient client)
+    {
         var token = _authState.Token;
         if (!string.IsNullOrEmpty(token))
         {
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
         }
-
-        return client;
     }
 }
-

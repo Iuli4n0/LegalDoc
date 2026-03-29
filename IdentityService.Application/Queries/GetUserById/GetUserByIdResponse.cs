@@ -7,6 +7,9 @@ public record GetUserByIdResponse(
     string Email,
     string FullName,
     DateTime CreatedAt,
-    DateTime? LastLoginAt
+    DateTime? LastLoginAt,
+    string Role,
+    int TotalDocumentsUploaded,
+    int MaxDocuments,
+    int MaxDocumentSizeMb
 );
-

@@ -13,13 +13,12 @@ namespace DocumentService.Infrastructure.Services;
 
 public class OllamaResumeService : IResumeGeneratorService
 {
-    private const int DefaultChunkSize = 1000;
-    private const int DefaultTimeoutSeconds = 90;
-    private const int SingleResumeMaxWords = 150;
-    private const int ChunkResumeMaxWords = 100;
-    private const int CombinedResumeMaxWords = 500;
-    private const double ChunkSplitThreshold = 0.8;
-    
+    private const int DefaultChunkSize = 2500; 
+    private const int DefaultTimeoutSeconds = 300; 
+    private const int SingleResumeMaxWords = 400; 
+    private const int ChunkResumeMaxWords = 250;
+    private const int CombinedResumeMaxWords = 800; 
+    private const double ChunkSplitThreshold = 0.15; 
     private readonly OllamaApiClient _ollamaClient;
     private readonly string _model;
     private readonly int _chunkSize;
@@ -54,8 +53,7 @@ public class OllamaResumeService : IResumeGeneratorService
             var resume = await GenerateSingleResumeAsync(chunks[0], cancellationToken);
             return new ResumeResult(resume, 1);
         }
-
-        // Generează rezumate parțiale pentru fiecare chunk
+        
         var partialResumes = new List<string>();
         for (var i = 0; i < chunks.Count; i++)
         {
@@ -63,8 +61,7 @@ public class OllamaResumeService : IResumeGeneratorService
             var partialResume = await GenerateChunkResumeAsync(chunks[i], i + 1, chunks.Count, cancellationToken);
             partialResumes.Add(partialResume);
         }
-
-        // Combină rezumatele parțiale într-un rezumat final
+        
         _logger.LogInformation("Combining {Count} partial resumes into final resume", partialResumes.Count);
         var finalResume = await CombineResumesAsync(partialResumes, cancellationToken);
 
@@ -74,9 +71,17 @@ public class OllamaResumeService : IResumeGeneratorService
     private async Task<string> GenerateSingleResumeAsync(string text, CancellationToken cancellationToken)
     {
         var prompt = $"""
-                      Generează un rezumat concis în limba română al următorului document (maxim {SingleResumeMaxWords} cuvinte):
+                      Acționezi ca un asistent juridic cu experiență. Sarcina ta este să generezi un rezumat clar, structurat și la obiect al următorului document juridic în limba română (maxim {SingleResumeMaxWords} cuvinte).
 
+                      REGULI STRICTE PENTRU A EVITA HALUCINAȚIILE:
+                      1. REZUMĂ EXCLUSIV TEXTUL FURNIZAT. Nu deduce, nu interpreta legea și nu adăuga detalii care nu sunt scrise negru pe alb în text.
+                      2. Identifică și păstrează nealterate elementele cheie: părțile implicate, obiectul contractului/litigiului, temeiurile legale (dacă sunt menționate expres) și obligațiile/deciziile finale.
+                      3. Dacă textul este ambiguu, menține ambiguitatea în rezumat; nu încerca să o rezolvi tu.
+
+                      DOCUMENT JURIDIC:
                       {text}
+
+                      REZUMATUL DOCUMENTULUI:
                       """;
 
         return await SendToOllamaAsync(prompt, cancellationToken);
@@ -85,10 +90,20 @@ public class OllamaResumeService : IResumeGeneratorService
     private async Task<string> GenerateChunkResumeAsync(string chunkText, int chunkNumber, int totalChunks, CancellationToken cancellationToken)
     {
         var prompt = $"""
-                      Aceasta este partea {chunkNumber} din {totalChunks} ale unui document.
-                      Generează un rezumat concis în limba română al acestei părți (maxim {ChunkResumeMaxWords} cuvinte):
+                      Acționezi ca un asistent juridic expert și obiectiv.
+                      Aceasta este partea {chunkNumber} din {totalChunks} a unui document juridic.
+                      Sarcina ta este să generezi un rezumat concis al acestui fragment în limba română (maxim {ChunkResumeMaxWords} cuvinte).
 
+                      REGULI STRICTE PENTRU A EVITA HALUCINAȚIILE:
+                      1. Bazează-te STRICT pe textul furnizat. NU inventa informații, nu face presupuneri și nu adăuga cunoștințe externe.
+                      2. Păstrează exactitatea absolută a datelor: nume de persoane/instituții, date calendaristice, sume de bani și articole de lege menționate.
+                      3. Nu interpreta textul și nu oferi sfaturi legale; doar rezumă faptele descrise.
+                      4. Dacă fragmentul conține doar anteturi, semnături sau nu are substanță juridică, menționează scurt acest lucru.
+
+                      TEXT FRAGMENT:
                       {chunkText}
+
+                      REZUMATUL FRAGMENTULUI:
                       """;
 
         return await SendToOllamaAsync(prompt, cancellationToken);
@@ -99,9 +114,18 @@ public class OllamaResumeService : IResumeGeneratorService
         var combined = string.Join("\n\n", partialResumes.Select((r, i) => $"Rezumat partea {i + 1}: {r}"));
 
         var prompt = $"""
-                      Combină următoarele rezumate parțiale ale unui document într-un singur rezumat coerent în limba română (maxim {CombinedResumeMaxWords} cuvinte):
+                      Acționezi ca un asistent juridic expert. Mai jos se află o serie de rezumate parțiale (fragmente) extrase din același document juridic lung.
+                      Sarcina ta este să le îmbini într-un singur rezumat final, coerent și logic în limba română (maxim {CombinedResumeMaxWords} cuvinte).
 
+                      REGULI STRICTE PENTRU A EVITA HALUCINAȚIILE:
+                      1. Folosește EXCLUSIV informațiile din rezumatele parțiale furnizate mai jos. Este strict interzis să adaugi detalii noi.
+                      2. Elimină repetițiile dintre fragmente, dar asigură-te că păstrezi esența juridică: obiectul documentului, părțile implicate, argumentele principale și decizia/concluzia.
+                      3. Păstrează un ton formal, neutru și obiectiv. Nu trage propriile tale concluzii.
+
+                      REZUMATE PARȚIALE:
                       {combined}
+
+                      REZUMATUL FINAL COERENT:
                       """;
 
         return await SendToOllamaAsync(prompt, cancellationToken);
@@ -160,8 +184,7 @@ public class OllamaResumeService : IResumeGeneratorService
         {
             var remainingLength = text.Length - currentIndex;
             var length = Math.Min(chunkSize, remainingLength);
-
-            // Dacă am luat tot textul rămas, nu mai trebuie să căutăm punct de tăiere
+            
             if (length >= remainingLength)
             {
                 chunks.Add(text.Substring(currentIndex, length).Trim());

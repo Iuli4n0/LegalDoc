@@ -1,0 +1,65 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3 mb-n1"/>
+            Edit Limits for @UserName
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudNumericField @bind-Value="Result.MaxDocuments"
+                         Label="Max Documents"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         Max="1000"
+                         Required="true"
+                         Class="mb-4" />
+                         
+        <MudNumericField @bind-Value="Result.MaxDocumentSizeMb"
+                         Label="Max File Size (MB)"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         Max="100"
+                         Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Save Changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public int MaxDocuments { get; set; }
+    [Parameter] public int MaxDocumentSizeMb { get; set; }
+    [Parameter] public string UserName { get; set; } = string.Empty;
+
+    private EditLimitsResult Result { get; set; } = new();
+
+    protected override void OnInitialized()
+    {
+        Result.MaxDocuments = MaxDocuments;
+        Result.MaxDocumentSizeMb = MaxDocumentSizeMb;
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(Result));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
+
+@code {
+    // This class is used to return the modified values
+    public class EditLimitsResult
+    {
+        public int MaxDocuments { get; set; }
+        public int MaxDocumentSizeMb { get; set; }
+    }
+}
