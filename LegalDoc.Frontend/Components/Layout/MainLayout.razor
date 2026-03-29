@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @using LegalDoc.Frontend.Services
 @inject AuthService AuthService
 @inject AuthStateService AuthState
@@ -44,6 +44,10 @@
             {
                 <MudNavLink Href="/upload" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudUpload">Upload Document</MudNavLink>
                 <MudNavLink Href="/documents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FindInPage">Search Document</MudNavLink>
+                @if (AuthState.IsAdmin)
+                {
+                    <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings" Style="color: #FFA726;">Admin Panel</MudNavLink>
+                }
             }
             else
             {

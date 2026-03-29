@@ -26,7 +26,11 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, GetUser
             user.Email,
             user.FullName,
             user.CreatedAt,
-            user.LastLoginAt
+            user.LastLoginAt,
+            user.Role,
+            user.TotalDocumentsUploaded,
+            user.MaxDocuments,
+            user.MaxDocumentSizeMb
         );
     }
 }

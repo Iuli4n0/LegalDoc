@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Security.Claims;
 using DocumentService.API.Controllers;
 using DocumentService.Application.Commands.ClassifyDocumentClauses;
@@ -17,6 +18,7 @@ namespace DocumentService.Test.API;
 public class DocumentsControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock = new();
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock = new();
 
     [Fact]
     public async Task Given_EmptyFile_When_UploadDocument_Then_BadRequestIsReturned()
@@ -625,7 +627,7 @@ public class DocumentsControllerTests
 
     private DocumentsController CreateControllerWithClaims(string claimType = ClaimTypes.NameIdentifier, string claimValue = "user-1")
     {
-        var controller = new DocumentsController(_mediatorMock.Object)
+        var controller = new DocumentsController(_mediatorMock.Object, _httpClientFactoryMock.Object)
         {
             ControllerContext = new ControllerContext
             {
@@ -641,7 +643,7 @@ public class DocumentsControllerTests
 
     private DocumentsController CreateControllerWithoutClaims()
     {
-        var controller = new DocumentsController(_mediatorMock.Object)
+        var controller = new DocumentsController(_mediatorMock.Object, _httpClientFactoryMock.Object)
         {
             ControllerContext = new ControllerContext
             {

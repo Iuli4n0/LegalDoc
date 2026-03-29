@@ -21,6 +21,10 @@ public class IdentityDbContext : DbContext
             entity.Property(u => u.FullName).IsRequired().HasMaxLength(200);
             entity.Property(u => u.CreatedAt).IsRequired();
             entity.Property(u => u.LastLoginAt);
+            entity.Property(u => u.Role).IsRequired().HasMaxLength(50).HasDefaultValue("User");
+            entity.Property(u => u.TotalDocumentsUploaded).IsRequired().HasDefaultValue(0);
+            entity.Property(u => u.MaxDocuments).IsRequired().HasDefaultValue(3);
+            entity.Property(u => u.MaxDocumentSizeMb).IsRequired().HasDefaultValue(10);
             entity.HasIndex(u => u.Email).IsUnique();
         });
     }

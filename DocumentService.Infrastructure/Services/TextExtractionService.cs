@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -36,13 +37,15 @@ public class TextExtractionService : ITextExtractionService
     {
         _logger.LogInformation("Extracting text from file with content type: {ContentType}", contentType);
 
-        return contentType.ToLowerInvariant() switch
+        var extractedText = contentType.ToLowerInvariant() switch
         {
             "application/pdf" => ExtractFromPdf(fileStream),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ExtractFromDocx(fileStream),
             "text/plain" => await ExtractFromTxt(fileStream),
             _ => throw new NotSupportedException($"Content type '{contentType}' is not supported for text extraction.")
         };
+
+        return CleanAndNormalizeText(extractedText);
     }
 
     private string ExtractFromPdf(Stream fileStream)
@@ -54,10 +57,13 @@ public class TextExtractionService : ITextExtractionService
 
             foreach (var page in document.GetPages())
             {
-                sb.AppendLine(page.Text);
+                var words = page.GetWords().Select(w => w.Text);
+                var pageText = string.Join(" ", words);
+                
+                sb.AppendLine(pageText);
             }
 
-            var text = sb.ToString().Trim();
+            var text = sb.ToString();
             _logger.LogInformation("Extracted {CharCount} characters from PDF ({PageCount} pages)", text.Length, document.NumberOfPages);
             return text;
         }
@@ -79,13 +85,25 @@ public class TextExtractionService : ITextExtractionService
                 return string.Empty;
 
             var sb = new StringBuilder();
-
-            foreach (var paragraph in body.Elements<Paragraph>())
+            
+            foreach (var element in body.Descendants())
             {
-                sb.AppendLine(paragraph.InnerText);
+                if (element is Paragraph)
+                {
+                    foreach (var child in element.Descendants())
+                    {
+                        if (child is Text textNode)
+                            sb.Append(textNode.Text);
+                        else if (child is Break)
+                            sb.AppendLine();
+                        else if (child is TabChar)
+                            sb.Append('\t');
+                    }
+                    sb.AppendLine(); 
+                }
             }
 
-            var text = sb.ToString().Trim();
+            var text = sb.ToString();
             _logger.LogInformation("Extracted {CharCount} characters from DOCX", text.Length);
             return text;
         }
@@ -101,5 +119,19 @@ public class TextExtractionService : ITextExtractionService
         using var reader = new StreamReader(fileStream, Encoding.UTF8, leaveOpen: true);
         return await reader.ReadToEndAsync();
     }
-}
 
+   
+    private static string CleanAndNormalizeText(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+       
+        var text = Regex.Replace(input, @"(\w+)[-‐‑]\s*[\r\n]+\s*(\w+)", "$1$2");
+        
+        text = Regex.Replace(text, @"[^\S\r\n]+", " ");
+        
+        text = Regex.Replace(text, @"(\r?\n){3,}", "\n\n");
+
+        return text.Trim();
+    }
+}

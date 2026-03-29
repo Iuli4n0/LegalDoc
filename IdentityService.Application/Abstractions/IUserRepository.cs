@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using IdentityService.Domain.Entities;
 
@@ -11,5 +12,5 @@ public interface IUserRepository
     Task AddAsync(User user);
     Task UpdateAsync(User user);
     Task<bool> ExistsAsync(string email);
+    Task<IEnumerable<User>> GetAllAsync();
 }
-

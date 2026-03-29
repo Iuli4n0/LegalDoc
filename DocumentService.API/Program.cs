@@ -101,6 +101,14 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// HttpClient for IdentityService (cross-service communication for limit checks)
+builder.Services.AddHttpClient("IdentityAPI", client =>
+{
+    var identityUrl = builder.Configuration["IdentityServiceUrl"] ?? "http://localhost:5164";
+    client.BaseAddress = new Uri(identityUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 var app = builder.Build();
 
 // Apply EF Core migrations automatically at startup

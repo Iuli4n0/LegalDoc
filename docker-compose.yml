@@ -63,6 +63,9 @@ services:
       JwtSettings__Issuer: ${JWT_ISSUER}
       JwtSettings__Audience: ${JWT_AUDIENCE}
       JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      AdminEmail: ${ADMIN_EMAIL}
+      AdminPassword: ${ADMIN_PASSWORD}
+      AdminFullName: ${ADMIN_FULLNAME}
       CorsOrigins: "http://localhost:8080,http://frontend:8080"
     depends_on:
       postgres:

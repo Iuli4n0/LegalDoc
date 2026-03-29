@@ -152,7 +152,7 @@ public class AuthControllerTests
     public async Task Given_ValidNameIdentifierClaim_When_GetCurrentUserIsCalled_Then_ShouldReturnOk()
     {
         var userId = Guid.NewGuid();
-        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null);
+        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 3, 10);
         SetClaimsPrincipal(new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) });
 
         _mediatorMock
@@ -170,7 +170,7 @@ public class AuthControllerTests
     public async Task Given_ExistingUserId_When_GetUserIsCalled_Then_ShouldReturnOk()
     {
         var userId = Guid.NewGuid();
-        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null);
+        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 3, 10);
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<GetUserByIdQuery>(q => q.Id == userId), It.IsAny<CancellationToken>()))

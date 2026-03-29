@@ -27,4 +27,3 @@ public record RegisterResponse(
     string FullName,
     DateTime CreatedAt
 );
-
