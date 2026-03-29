@@ -3,36 +3,63 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - master 
+      - master
+  workflow_dispatch:
+    inputs:
+      update_model:
+        description: 'check to pull la ML model (clauze_abuzive)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout main repository
         uses: actions/checkout@v4
 
       - name: Create .env file from secrets
         run: |
           echo "${{ secrets.ENV_FILE }}" > .env
 
-      - name: Copy files to EC2 via SCP
+      - name: Copy main project files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "."
+          source: ".,!.git,!classifier/model_clauze_abuzive"
           target: "/home/${{ secrets.EC2_USERNAME }}/app"
 
-      - name: Deploy with Docker Compose
+      - name: Manage ML Model & Deploy
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          UPDATE_MODEL: ${{ github.event.inputs.update_model }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: UPDATE_MODEL
           script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/app/classifier
+            
+            # check if model is present
+            if [ ! -d "model_clauze_abuzive" ]; then
+              git clone https://github.com/Iuli4n0/romanian-bert-clauses-classifier.git temp_repo
+              mv temp_repo/model_clauze_abuzive ./
+              rm -rf temp_repo
+            else
+              echo "model is present."
+              if [ "$UPDATE_MODEL" = "true" ]; then
+                echo "forceing model update.."
+                cd model_clauze_abuzive
+                git pull origin main
+                cd ..
+              fi
+            fi
+
             cd /home/${{ secrets.EC2_USERNAME }}/app
             
             docker compose down
