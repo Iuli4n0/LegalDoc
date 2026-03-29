@@ -5,8 +5,15 @@ namespace DocumentService.Application.Commands.GenerateDocumentClauses;
 
 public record GenerateDocumentClausesResponse(
     Guid DocumentId,
-    IReadOnlyList<string> Clauses,
+    IReadOnlyList<GenerateDocumentClauseResponseItem> Clauses,
     DateTime GeneratedAt,
     int ChunksProcessed
 );
 
+public record GenerateDocumentClauseResponseItem(
+    Guid ClauseId,
+    string Text,
+    bool? IsAbusive,
+    double? AbusiveProbability,
+    DateTime? ClassifiedAt
+);

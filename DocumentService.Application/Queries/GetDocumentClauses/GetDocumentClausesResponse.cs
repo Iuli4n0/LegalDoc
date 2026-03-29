@@ -5,6 +5,14 @@ namespace DocumentService.Application.Queries.GetDocumentClauses;
 
 public record GetDocumentClausesResponse(
     Guid DocumentId,
-    IReadOnlyList<string> Clauses,
+    IReadOnlyList<GetDocumentClauseResponseItem> Clauses,
     DateTime? GeneratedAt
+);
+
+public record GetDocumentClauseResponseItem(
+    Guid ClauseId,
+    string Text,
+    bool? IsAbusive,
+    double? AbusiveProbability,
+    DateTime? ClassifiedAt
 );

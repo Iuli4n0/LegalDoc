@@ -163,7 +163,11 @@ public class DocumentModelsTests
         // Arrange
         var documentId = Guid.NewGuid();
         var generatedAt = DateTime.UtcNow;
-        IReadOnlyList<string> clauses = ["Clauza 1", "Clauza 2"];
+        IReadOnlyList<DocumentClauseItem> clauses =
+        [
+            new(Guid.NewGuid(), "Clauza 1", null, null, null),
+            new(Guid.NewGuid(), "Clauza 2", true, 0.91, DateTime.UtcNow)
+        ];
 
         // Act
         var response = new ExtractClausesResponse(documentId, clauses, generatedAt, 4);
@@ -181,7 +185,11 @@ public class DocumentModelsTests
         // Arrange
         var documentId = Guid.NewGuid();
         var generatedAt = DateTime.UtcNow;
-        IReadOnlyList<string> clauses = ["A", "B"];
+        IReadOnlyList<DocumentClauseItem> clauses =
+        [
+            new(Guid.NewGuid(), "A", null, null, null),
+            new(Guid.NewGuid(), "B", false, 0.07, DateTime.UtcNow)
+        ];
 
         // Act
         var response1 = new ExtractClausesResponse(documentId, clauses, generatedAt, 2);
@@ -189,5 +197,26 @@ public class DocumentModelsTests
 
         // Assert
         Assert.Equal(response1, response2);
+    }
+
+    [Fact]
+    public void Given_ValidParameters_When_ClassifyClausesResponseIsCreated_Then_ShouldStoreAllProperties()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        var classifiedAt = DateTime.UtcNow;
+        IReadOnlyList<DocumentClauseItem> clauses =
+        [
+            new(Guid.NewGuid(), "Clauza clasificata", true, 0.88, classifiedAt)
+        ];
+
+        // Act
+        var response = new ClassifyClausesResponse(documentId, clauses, classifiedAt);
+
+        // Assert
+        Assert.Equal(documentId, response.DocumentId);
+        Assert.Equal(classifiedAt, response.ClassifiedAt);
+        Assert.Single(response.Clauses);
+        Assert.True(response.Clauses[0].IsAbusive);
     }
 }

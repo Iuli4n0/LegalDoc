@@ -5,6 +5,6 @@ namespace LegalDoc.Frontend.Models;
 
 public record GetDocumentClausesResponse(
     Guid DocumentId,
-    List<string> Clauses,
+    IReadOnlyList<DocumentClauseItem> Clauses,
     DateTime? GeneratedAt
 );

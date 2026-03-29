@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using DocumentService.API.Controllers;
+using DocumentService.Application.Commands.ClassifyDocumentClauses;
 using DocumentService.Application.Commands.DeleteDocument;
 using DocumentService.Application.Commands.GenerateDocumentClauses;
 using DocumentService.Application.Commands.GenerateDocumentResume;
@@ -285,7 +286,7 @@ public class DocumentsControllerTests
     [Fact]
     public async Task Given_ValidRequest_When_DeleteDocument_Then_NoContentIsReturned()
     {
-        var controller = CreateControllerWithClaims(ClaimTypes.NameIdentifier, "user-1");
+        var controller = CreateControllerWithClaims();
         var id = Guid.NewGuid();
 
         _mediatorMock
@@ -389,7 +390,7 @@ public class DocumentsControllerTests
     [Fact]
     public async Task Given_ValidRequest_When_DownloadDocument_Then_FileStreamResultIsReturned()
     {
-        var controller = CreateControllerWithClaims(ClaimTypes.NameIdentifier, "user-1");
+        var controller = CreateControllerWithClaims();
         var id = Guid.NewGuid();
         var stream = new MemoryStream([1, 2, 3]);
 
@@ -467,7 +468,14 @@ public class DocumentsControllerTests
             .Setup(m => m.Send(It.IsAny<GetDocumentQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GetDocumentResponse(id, "user-1", "a", "application/pdf", "k", 1, DateTime.UtcNow, null, null));
 
-        var expected = new GenerateDocumentClausesResponse(id, ["Clause A", "Clause B"], DateTime.UtcNow, 2);
+        var expected = new GenerateDocumentClausesResponse(
+            id,
+            [
+                new GenerateDocumentClauseResponseItem(Guid.NewGuid(), "Clause A", null, null, null),
+                new GenerateDocumentClauseResponseItem(Guid.NewGuid(), "Clause B", null, null, null)
+            ],
+            DateTime.UtcNow,
+            2);
         _mediatorMock
             .Setup(m => m.Send(It.IsAny<GenerateDocumentClausesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
@@ -477,7 +485,7 @@ public class DocumentsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<GenerateDocumentClausesResponse>(ok.Value);
         Assert.Equal(2, payload.Clauses.Count);
-        Assert.Contains("Clause A", payload.Clauses);
+        Assert.Contains(payload.Clauses, c => c.Text == "Clause A");
     }
 
     [Fact]
@@ -555,6 +563,64 @@ public class DocumentsControllerTests
         var objectResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(500, objectResult.StatusCode);
         Assert.Contains("Failed to extract clauses: boom", objectResult.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task Given_NoUser_When_ClassifyClauses_Then_UnauthorizedIsReturned()
+    {
+        var controller = CreateControllerWithoutClaims();
+
+        var result = await controller.ClassifyClauses(Guid.NewGuid());
+
+        Assert.IsType<UnauthorizedResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Given_NoClauses_When_ClassifyClauses_Then_BadRequestIsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+        var id = Guid.NewGuid();
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<GetDocumentQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetDocumentResponse(id, "user-1", "a", "application/pdf", "k", 1, DateTime.UtcNow, null, null));
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<ClassifyDocumentClausesCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("No clauses found for classification."));
+
+        var result = await controller.ClassifyClauses(id);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("No clauses found for classification.", badRequest.Value);
+    }
+
+    [Fact]
+    public async Task Given_ValidRequest_When_ClassifyClauses_Then_OkIsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+        var id = Guid.NewGuid();
+        var classifiedAt = DateTime.UtcNow;
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<GetDocumentQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetDocumentResponse(id, "user-1", "a", "application/pdf", "k", 1, DateTime.UtcNow, null, null));
+
+        var expected = new ClassifyDocumentClausesResponse(
+            id,
+            [new ClassifiedClauseResponseItem(Guid.NewGuid(), "Clause A", true, 0.83, classifiedAt)],
+            classifiedAt);
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<ClassifyDocumentClausesCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await controller.ClassifyClauses(id);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ClassifyDocumentClausesResponse>(ok.Value);
+        Assert.Single(payload.Clauses);
+        Assert.True(payload.Clauses[0].IsAbusive);
     }
 
     private DocumentsController CreateControllerWithClaims(string claimType = ClaimTypes.NameIdentifier, string claimValue = "user-1")

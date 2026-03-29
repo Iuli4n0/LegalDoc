@@ -14,7 +14,7 @@ namespace DocumentService.Infrastructure.Services;
 public class OllamaClauseExtractionService : IClauseExtractorService
 {
     private const int DefaultChunkSize = 2000;
-    private const int DefaultTimeoutSeconds = 120;
+    private const int DefaultTimeoutSeconds = 600;
     private const string ClauseStartDelimiter = "<clause>";
     private const string ClauseEndDelimiter = "</clause>";
 
@@ -23,15 +23,21 @@ public class OllamaClauseExtractionService : IClauseExtractorService
     private readonly int _chunkSize;
     private readonly ILogger<OllamaClauseExtractionService> _logger;
 
-    public OllamaClauseExtractionService(IConfiguration configuration, ILogger<OllamaClauseExtractionService> logger)
+    public OllamaClauseExtractionService(HttpClient httpClient, IConfiguration configuration, ILogger<OllamaClauseExtractionService> logger)
     {
         _logger = logger;
+        
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         _model = configuration["Ollama:Model"] ?? "llama3.1:latest";
         _chunkSize = int.TryParse(configuration["Ollama:ClauseChunkSize"], out var cs) ? cs : DefaultChunkSize;
 
-        _ollamaClient = new OllamaApiClient(new Uri(endpoint));
+        if (httpClient.BaseAddress == null)
+        {
+            httpClient.BaseAddress = new Uri(endpoint);
+        }
+
+        _ollamaClient = new OllamaApiClient(httpClient);
 
         _logger.LogInformation("OllamaClauseExtractionService initialized. Endpoint: {Endpoint}, Model: {Model}", endpoint, _model);
     }
@@ -51,7 +57,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
             _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
             var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken);
             var parsedClauses = ParseClauses(rawResponse);
-            
+
             foreach (var clause in parsedClauses)
             {
                 allClauses.Add(clause);
@@ -64,16 +70,22 @@ public class OllamaClauseExtractionService : IClauseExtractorService
     private async Task<string> ExtractChunkClausesAsync(string chunkText, CancellationToken cancellationToken)
     {
         var prompt = $"""
-                      Ești un asistent juridic expert. Sarcina ta este să extragi toate clauzele contractuale/juridice din textul furnizat.
-                      
-                      REGULI SIMPLE ȘI STRICTE:
-                      1. Extrage DOAR textul exact al clauzelor. Nu adăuga absolut niciun cuvânt în plus.
-                      2. Pune FIX fiecare clauză extrasă între tag-urile {ClauseStartDelimiter} și {ClauseEndDelimiter}.
-                      3. Dacă textul nu conține nicio clauză relevantă, nu răspunde cu nimic (lasă gol).
+                      Ești un asistent juridic expert cu atenție maximă la detalii. Sarcina ta este să extragi exact (copy-paste) toate clauzele contractuale/juridice din textul furnizat.
 
-                      EXEMPLU DE RĂSPUNS AȘTEPTAT:
+                      DEFINIȚIA CLAUZEI:
+                      O clauză reprezintă o obligație, un drept, o condiție, o penalitate sau o prevedere legală completă.
+                      ATENȚIE: O clauză poate fi o singură propoziție, DAR foarte des este un paragraf întreg, format din mai multe propoziții interconectate, sau chiar o enumerare. Extrage ideea juridică în întregimea ei.
+
+                      REGULI STRICTE DE EXTRAGERE:
+                      1. EXTRAGERE VERBATIM: Copiază textul exact cum apare în sursă. Nu rezuma, nu modifica și nu omite niciun cuvânt din interiorul clauzei.
+                      2. GRUPARE CORECTĂ: Dacă mai multe propoziții formează o singură regulă/clauză logică, include-le pe TOATE între aceleași tag-uri. Nu le sparge artificial.
+                      3. DELIMITARE EXACTĂ: Pune FIX fiecare clauză completă între tag-urile {ClauseStartDelimiter} și {ClauseEndDelimiter}.
+                      4. FĂRĂ CONVERSAȚIE: Nu adăuga absolut niciun cuvânt de politețe sau explicație (fără "Iată clauzele:", fără "Rezultat:"). Doar tag-urile și textul.
+                      5. TEXT FĂRĂ CLAUZE: Dacă textul nu conține prevederi juridice clare, nu returna absolut nimic (lasă răspunsul complet gol).
+
+                      EXEMPLU DE RĂSPUNS AȘTEPTAT (observă cum clauza a doua conține mai multe propoziții care formează un tot unitar):
                       {ClauseStartDelimiter}Prezentul contract intră în vigoare la data semnării.{ClauseEndDelimiter}
-                      {ClauseStartDelimiter}Părțile se obligă să păstreze confidențialitatea informațiilor.{ClauseEndDelimiter}
+                      {ClauseStartDelimiter}Părțile se obligă să păstreze confidențialitatea informațiilor. Această obligație este valabilă pe o perioadă de 5 ani de la încetarea contractului. Orice încălcare a acestei prevederi atrage după sine plata unor daune-interese în valoare de 10.000 EUR.{ClauseEndDelimiter}
 
                       TEXT DE ANALIZAT:
                       {chunkText}
@@ -155,7 +167,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
             var splitIndex = chunkSpan.LastIndexOf("\n\n");
             if (splitIndex == -1) splitIndex = chunkSpan.LastIndexOf('\n');
             if (splitIndex == -1) splitIndex = chunkSpan.LastIndexOf(' ');
-            
+
             if (splitIndex == -1) splitIndex = chunkSize;
 
             chunks.Add(span.Slice(0, splitIndex).ToString().Trim());

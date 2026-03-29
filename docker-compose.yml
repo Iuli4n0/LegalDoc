@@ -97,6 +97,7 @@ services:
       Ollama__Endpoint: "http://ollama:11434"
       Ollama__Model: "${OLLAMA_MODEL:-llama3.1:latest}"
       Ollama__ChunkSize: "${OLLAMA_CHUNK_SIZE:-8000}"
+      Classifier__BaseUrl: "http://classifier:8000"
       CorsOrigins: "http://localhost:8080,http://frontend:8080"
     depends_on:
       postgres:
@@ -105,6 +106,8 @@ services:
         condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
+      classifier:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
       interval: 30s

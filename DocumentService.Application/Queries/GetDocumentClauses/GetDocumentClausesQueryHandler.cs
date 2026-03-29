@@ -30,7 +30,12 @@ public class GetDocumentClausesQueryHandler : IRequestHandler<GetDocumentClauses
 
         return new GetDocumentClausesResponse(
             request.DocumentId,
-            clauses.Select(c => c.Text).ToList(),
+            clauses.Select(c => new GetDocumentClauseResponseItem(
+                c.Id,
+                c.Text,
+                c.IsAbusive,
+                c.AbusiveProbability,
+                c.ClassifiedAt)).ToList(),
             clauses.Count > 0 ? clauses.Max(c => c.ExtractedAt) : null
         );
     }

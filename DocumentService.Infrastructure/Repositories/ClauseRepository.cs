@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using DocumentService.Domain.Entities;
@@ -29,11 +31,39 @@ public class ClauseRepository : IClauseRepository
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<IReadOnlyList<Clause>> GetByDocumentIdAsync(System.Guid documentId)
+    public async Task<IReadOnlyList<Clause>> GetByDocumentIdAsync(Guid documentId)
     {
         return await _dbContext.Clauses
             .Where(c => c.DocumentId == documentId)
             .OrderBy(c => c.ExtractedAt)
             .ToListAsync();
+    }
+
+    public async Task ReplaceForDocumentAsync(Guid documentId, IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var existingClauses = await _dbContext.Clauses
+            .Where(c => c.DocumentId == documentId)
+            .ToListAsync(cancellationToken);
+
+        if (existingClauses.Count > 0)
+        {
+            _dbContext.Clauses.RemoveRange(existingClauses);
+        }
+
+        if (clauses.Count > 0)
+        {
+            await _dbContext.Clauses.AddRangeAsync(clauses, cancellationToken);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task UpdateRangeAsync(IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default)
+    {
+        _dbContext.Clauses.UpdateRange(clauses);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

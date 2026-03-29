@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using DocumentService.Application.Commands.ClassifyDocumentClauses;
 using DocumentService.Application.Commands.DeleteDocument;
 using DocumentService.Application.Commands.GenerateDocumentClauses;
 using DocumentService.Application.Commands.GenerateDocumentResume;
@@ -260,6 +261,50 @@ public class DocumentsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(InternalServerErrorStatusCode, $"Failed to delete document: {ex.Message}");
+        }
+    }
+
+    [HttpPost("{id:guid}/classify-clauses")]
+    public async Task<ActionResult<ClassifyDocumentClausesResponse>> ClassifyClauses(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var command = new ClassifyDocumentClausesCommand(id);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, $"Classifier service unavailable: {ex.Message}");
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(GatewayTimeoutStatusCode, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to classify clauses: {ex.Message}");
         }
     }
 

@@ -72,7 +72,7 @@ public class GenerateDocumentClausesCommandHandler
             .Select(text => Clause.Create(document.Id, text))
             .ToList();
 
-        await _clauseRepository.AddRangeAsync(clausesToSave);
+        await _clauseRepository.ReplaceForDocumentAsync(document.Id, clausesToSave, cancellationToken);
 
         var generatedAt = DateTime.UtcNow;
 
@@ -82,10 +82,16 @@ public class GenerateDocumentClausesCommandHandler
 
         return new GenerateDocumentClausesResponse(
             document.Id,
-            extractionResult.Clauses,
+            clausesToSave
+                .Select(c => new GenerateDocumentClauseResponseItem(
+                    c.Id,
+                    c.Text,
+                    c.IsAbusive,
+                    c.AbusiveProbability,
+                    c.ClassifiedAt))
+                .ToList(),
             generatedAt,
             extractionResult.ChunksProcessed
         );
     }
 }
-
