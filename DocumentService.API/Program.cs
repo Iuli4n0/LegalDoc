@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using Amazon.S3;
 using DocumentService.Application.Abstractions;
@@ -61,7 +62,18 @@ builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
 builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
-builder.Services.AddScoped<IClauseExtractorService, OllamaClauseExtractionService>();
+
+
+builder.Services.AddHttpClient<IClauseExtractorService, OllamaClauseExtractionService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(10); 
+});
+builder.Services.AddHttpClient<IClauseClassificationService, ClauseClassificationService>((_, client) =>
+{
+    var classifierBaseUrl = builder.Configuration["Classifier:BaseUrl"] ?? "http://localhost:8000";
+    client.BaseAddress = new Uri(classifierBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(90);
+});
 builder.Services.AddScoped<IClauseRepository, ClauseRepository>();
 
 // JWT Authentication

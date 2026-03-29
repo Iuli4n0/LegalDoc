@@ -1,8 +1,8 @@
 namespace LegalDoc.Frontend.Models;
 
-public record ExtractClausesResponse(
+public record ClassifyClausesResponse(
     Guid DocumentId,
     IReadOnlyList<DocumentClauseItem> Clauses,
-    DateTime GeneratedAt,
-    int ChunksProcessed
+    DateTime ClassifiedAt
 );
+

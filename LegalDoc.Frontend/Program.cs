@@ -6,6 +6,8 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var detailedErrors = builder.Configuration.GetValue("DetailedErrors", builder.Environment.IsDevelopment());
+var apiTimeoutSeconds = builder.Configuration.GetValue("HttpClient:ApiTimeoutSeconds", 600);
+var identityTimeoutSeconds = builder.Configuration.GetValue("HttpClient:IdentityTimeoutSeconds", 30);
 
 // Add services to the container.
 builder.Services.AddRazorComponents(options =>
@@ -27,12 +29,14 @@ builder.Services.AddScoped<ApiClient>();
 builder.Services.AddHttpClient("IdentityAPI", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["IdentityServiceUrl"] ?? "http://localhost:5164");
+    client.Timeout = TimeSpan.FromSeconds(identityTimeoutSeconds);
 });
 
 // HttpClient for DocumentService (auth header set by ApiClient at call time)
 builder.Services.AddHttpClient("API", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["DocumentServiceUrl"] ?? "http://localhost:5163");
+    client.Timeout = TimeSpan.FromSeconds(apiTimeoutSeconds);
 });
 
 // Configure persistent Data Protection keys for Blazor antiforgery/protected storage tokens so they remain decryptable across container restarts.

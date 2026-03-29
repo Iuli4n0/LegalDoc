@@ -13,6 +13,9 @@ public class Clause
     public Document Document { get; private set; } = null!;
     public string Text { get; private set; } = null!;
     public DateTime ExtractedAt { get; private set; }
+    public bool? IsAbusive { get; private set; }
+    public double? AbusiveProbability { get; private set; }
+    public DateTime? ClassifiedAt { get; private set; }
 
     public static Clause Create(Guid documentId, string text)
     {
@@ -29,5 +32,15 @@ public class Clause
             Text = text,
             ExtractedAt = DateTime.UtcNow
         };
+    }
+
+    public void SetClassification(bool isAbusive, double abusiveProbability)
+    {
+        if (abusiveProbability is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(abusiveProbability), "Abusive probability must be between 0 and 1.");
+
+        IsAbusive = isAbusive;
+        AbusiveProbability = abusiveProbability;
+        ClassifiedAt = DateTime.UtcNow;
     }
 }

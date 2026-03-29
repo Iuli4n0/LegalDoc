@@ -33,6 +33,9 @@ public class AppDbContext : DbContext
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Text).IsRequired();
             entity.Property(c => c.ExtractedAt).IsRequired();
+            entity.Property(c => c.AbusiveProbability);
+            entity.Property(c => c.IsAbusive);
+            entity.Property(c => c.ClassifiedAt);
 
             entity.HasOne(c => c.Document)
                 .WithMany()
@@ -41,4 +44,3 @@ public class AppDbContext : DbContext
         });
     }
 }
-

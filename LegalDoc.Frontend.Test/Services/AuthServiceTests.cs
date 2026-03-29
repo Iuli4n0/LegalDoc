@@ -290,6 +290,56 @@ public class AuthServiceTests
         Assert.Null(_authState.Token);
     }
 
+    [Fact]
+    public async Task Given_LoginRequest_When_LoginAsync_Then_ShouldUseIdentityApiNamedClient()
+    {
+        var responseModel = new LoginResponse(
+            Guid.NewGuid(),
+            "ion@example.com",
+            "Ion Popescu",
+            "token-123",
+            DateTime.UtcNow.AddHours(1));
+
+        var client = CreateClient(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(responseModel)
+            });
+
+        _httpClientFactoryMock.Setup(f => f.CreateClient("IdentityAPI")).Returns(client);
+        _authStorageMock.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+
+        var service = new AuthService(_httpClientFactoryMock.Object, _authStorageMock.Object, _authState);
+
+        await service.LoginAsync(new LoginRequest { Email = "ion@example.com", Password = "secret" });
+
+        _httpClientFactoryMock.Verify(f => f.CreateClient("IdentityAPI"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Given_RegisterRequest_When_RegisterAsync_Then_ShouldUseIdentityApiNamedClient()
+    {
+        var responseModel = new RegisterResponse(Guid.NewGuid(), "ion@example.com", "Ion Popescu", DateTime.UtcNow);
+        var client = CreateClient(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(responseModel)
+            });
+
+        _httpClientFactoryMock.Setup(f => f.CreateClient("IdentityAPI")).Returns(client);
+
+        var service = new AuthService(_httpClientFactoryMock.Object, _authStorageMock.Object, _authState);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "ion@example.com",
+            Password = "secret",
+            FullName = "Ion Popescu"
+        });
+
+        _httpClientFactoryMock.Verify(f => f.CreateClient("IdentityAPI"), Times.Once);
+    }
+
     private static HttpClient CreateClient(Func<HttpRequestMessage, HttpResponseMessage> handler)
     {
         var httpMessageHandler = new TestHttpMessageHandler(handler);

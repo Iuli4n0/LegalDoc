@@ -176,8 +176,11 @@ public class GenerateDocumentClausesCommandHandlerTests
         Assert.Equal(document.Id, response.DocumentId);
         Assert.Equal(2, response.ChunksProcessed);
         Assert.Equal(2, response.Clauses.Count);
-        Assert.Contains("Clauza de confidentialitate", response.Clauses);
+        Assert.Contains(response.Clauses, c => c.Text == "Clauza de confidentialitate");
         _documentRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Document>()), Times.Never);
+        _clauseRepositoryMock.Verify(
+            r => r.ReplaceForDocumentAsync(document.Id, It.IsAny<IReadOnlyList<Clause>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -252,4 +255,3 @@ public class GenerateDocumentClausesCommandHandlerTests
         Assert.InRange(response.GeneratedAt, before, after);
     }
 }
-
