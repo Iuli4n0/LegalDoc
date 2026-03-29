@@ -90,6 +90,7 @@ services:
       JwtSettings__Issuer: ${JWT_ISSUER}
       JwtSettings__Audience: ${JWT_AUDIENCE}
       JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      IdentityServiceUrl: "http://identity-service:8080"
       AWS__Region: ${AWS_REGION}
       AWS__BucketName: ${AWS_BUCKET_NAME}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}

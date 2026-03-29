@@ -104,7 +104,11 @@ builder.Services.AddAuthorization();
 // HttpClient for IdentityService (cross-service communication for limit checks)
 builder.Services.AddHttpClient("IdentityAPI", client =>
 {
-    var identityUrl = builder.Configuration["IdentityServiceUrl"] ?? "http://localhost:5164";
+    var identityUrl = builder.Configuration["IdentityServiceUrl"]
+        ?? (builder.Environment.IsDevelopment()
+            ? "http://localhost:5164"
+            : "http://identity-service:8080");
+
     client.BaseAddress = new Uri(identityUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
 });
