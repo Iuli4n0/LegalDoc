@@ -1,4 +1,3 @@
-@page "/documents"
 @page "/documents/{Id:guid}"
 @rendermode InteractiveServer
 @using LegalDoc.Frontend.Models
@@ -21,40 +20,6 @@
     </MudPaper>
 }
 
-<MudText Typo="Typo.h4" GutterBottom="true">Search Document</MudText>
-
-<MudCard Class="mb-4">
-    <MudCardContent>
-        <MudTextField @bind-Value="_searchId"
-                      Label="Document ID (GUID)"
-                      Placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                      Variant="Variant.Outlined"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      OnAdornmentClick="SearchDocument"
-                      Disabled="@(!_authReady || _loading)"
-                      Immediate="true"
-                      OnKeyDown="OnSearchKeyDown"/>
-    </MudCardContent>
-    <MudCardActions>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="SearchDocument"
-                   Disabled="@(_loading || !_authReady)"
-                   StartIcon="@Icons.Material.Filled.Search">
-            @if (_loading)
-            {
-                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                <MudText Class="ms-2">Searching...</MudText>
-            }
-            else
-            {
-                <MudText>Search</MudText>
-            }
-        </MudButton>
-    </MudCardActions>
-</MudCard>
-
 @if (_notFound)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
@@ -76,7 +41,6 @@
         <MudCardContent>
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
-                    <tr><td><strong>ID</strong></td><td>@_document.Id</td></tr>
                     <tr><td><strong>File Name</strong></td><td>@_document.FileName</td></tr>
                     <tr><td><strong>Content Type</strong></td><td>@_document.ContentType</td></tr>
                     <tr><td><strong>Size</strong></td><td>@FormatFileSize(_document.FileSize)</td></tr>
@@ -84,6 +48,31 @@
                 </tbody>
             </MudSimpleTable>
         </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       OnClick="DownloadDocument"
+                       Disabled="@(!_authReady || _downloading)"
+                       StartIcon="@Icons.Material.Filled.Download">
+                @if (_downloading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Downloading...</MudText>
+                }
+                else
+                {
+                    <MudText>Download Document</MudText>
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       OnClick="ConfirmDeleteDocument"
+                       Disabled="@(!_authReady || _deleting)"
+                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                       Class="ml-2">
+                Delete Document
+            </MudButton>
+        </MudCardActions>
     </MudCard>
 
     <MudCard Class="mb-4">
@@ -128,30 +117,6 @@
                 {
                     <MudText>Generate Summary</MudText>
                 }
-            </MudButton>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Info"
-                       OnClick="DownloadDocument"
-                       Disabled="@(!_authReady || _downloading)"
-                       StartIcon="@Icons.Material.Filled.Download"
-                       Class="ml-2">
-                @if (_downloading)
-                {
-                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <MudText Class="ms-2">Downloading...</MudText>
-                }
-                else
-                {
-                    <MudText>Download Document</MudText>
-                }
-            </MudButton>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Error"
-                       OnClick="ConfirmDeleteDocument"
-                       Disabled="@(!_authReady || _deleting)"
-                       StartIcon="@Icons.Material.Filled.DeleteForever"
-                       Class="ml-2">
-                Delete Document
             </MudButton>
         </MudCardActions>
     </MudCard>
@@ -250,7 +215,6 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private string _searchId = string.Empty;
     private bool _loading;
     private bool _notFound;
     private bool _generatingResume;
@@ -294,43 +258,16 @@
 
     protected override Task OnParametersSetAsync()
     {
-        if (Id.HasValue)
-        {
-            _searchId = Id.Value.ToString();
+        if (!Id.HasValue)
+            return Task.CompletedTask;
 
-            if (_authReady)
-            {
-                return LoadDocument(Id.Value);
-            }
-            else
-            {
-                _pendingDocumentId = Id.Value;
-            }
+        if (_authReady)
+        {
+            return LoadDocument(Id.Value);
         }
 
+        _pendingDocumentId = Id.Value;
         return Task.CompletedTask;
-    }
-
-    private async Task OnSearchKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await SearchDocument();
-        }
-    }
-
-    private async Task SearchDocument()
-    {
-        if (!_authReady || !AuthState.IsAuthenticated)
-            return;
-
-        if (!Guid.TryParse(_searchId, out var id))
-        {
-            Snackbar.Add("Please enter a valid GUID.", Severity.Warning);
-            return;
-        }
-
-        await LoadDocument(id);
     }
 
     private async Task LoadDocument(Guid id)
