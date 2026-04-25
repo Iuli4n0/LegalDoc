@@ -1,0 +1,583 @@
+@page "/pricing"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Models
+@using LegalDoc.Frontend.Services
+@using System.IdentityModel.Tokens.Jwt
+@inject ApiClient ApiClient
+@inject AuthService AuthService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>LegalDoc – Plans & Pricing</PageTitle>
+
+@if (!_authReady)
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="0">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1">Initializing session...</MudText>
+    </MudPaper>
+}
+else
+{
+    <div style="text-align:center; margin-bottom:40px;">
+        <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:-0.5px;">
+            Choose the right plan for you
+        </MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Style="margin-top:8px; max-width:600px; margin-left:auto; margin-right:auto;">
+            All plans include AI clause analysis, automatic classification, and secure cloud storage.
+        </MudText>
+    </div>
+
+    @if (_currentPlan is not null)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4" Style="border-radius:12px;">
+            <MudIcon Icon="@Icons.Material.Filled.Star" Class="mr-1" Style="vertical-align:middle;"/>
+            Your current plan: <strong>@_currentPlan</strong>
+            @if (_currentPlan != "Free")
+            {
+                <MudText Typo="Typo.caption" Style="display:inline; margin-left:12px;">
+                    @_monthlyUsed / @_maxDocs documents used this month
+                </MudText>
+            }
+        </MudAlert>
+    }
+
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        @* ── FREE ────────────────────────────── *@
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="@(_currentPlan == "Free" ? 8 : 2)" Class="pricing-card"
+                     Style="@GetCardStyle("Free", "#4a5568", "#2d3748")">
+                <MudCardHeader Style="text-align:center; padding-bottom:0;">
+                    <CardHeaderContent>
+                        @if (_currentPlan == "Free")
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small" Style="margin-bottom:8px;">Current plan</MudChip>
+                        }
+                        <MudIcon Icon="@Icons.Material.Filled.Explore" Style="font-size:48px; color:#a0aec0; display:block; margin:0 auto 8px;"/>
+                        <MudText Typo="Typo.h5" Style="font-weight:700;">Free</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Style="text-align:center;">
+                    <MudText Typo="Typo.h3" Style="font-weight:800; margin:16px 0 4px;">
+                        0 <span style="font-size:0.4em; font-weight:400;">RON/mo</span>
+                    </MudText>
+                    <MudDivider Class="my-3"/>
+                    <div class="pricing-features">
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>1 document / month</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Max 1 MB / file</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>AI resume & clause analysis</MudText>
+                    </div>
+                </MudCardContent>
+                <MudCardActions Style="justify-content:center; padding-bottom:24px;">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="true" FullWidth="true" Style="max-width:200px;">
+                        @(_currentPlan == "Free" ? "Active plan" : "Free plan")
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        @* ── BRONZE ──────────────────────────── *@
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="@(_currentPlan == "Bronze" ? 8 : 2)" Class="pricing-card"
+                     Style="@GetCardStyle("Bronze", "#92400e", "#78350f")">
+                <MudCardHeader Style="text-align:center; padding-bottom:0;">
+                    <CardHeaderContent>
+                        @if (_currentPlan == "Bronze")
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Style="margin-bottom:8px;">Current plan</MudChip>
+                        }
+                        <MudIcon Icon="@Icons.Material.Filled.WorkspacePremium" Style="font-size:48px; color:#d97706; display:block; margin:0 auto 8px;"/>
+                        <MudText Typo="Typo.h5" Style="font-weight:700;">Bronze</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Style="text-align:center;">
+                    <MudText Typo="Typo.h3" Style="font-weight:800; margin:16px 0 4px; color:#fbbf24;">
+                        @GetPayableAmount("Bronze") <span style="font-size:0.4em; font-weight:400; color:inherit;">RON first payment</span>
+                    </MudText>
+                    @if (GetCreditAmount("Bronze") > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Upgrade credit: -@GetCreditAmount("Bronze") RON</MudText>
+                    }
+                    <MudDivider Class="my-3"/>
+                    <div class="pricing-features">
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>5 documents / month</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Max 1 MB / file</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>AI resume & clause analysis</MudText>
+                    </div>
+                </MudCardContent>
+                <MudCardActions Style="justify-content:center; padding-bottom:24px;">
+                    @if (IsCurrentPlan("Bronze"))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true" Style="max-width:200px;"
+                                   OnClick="OpenPortal">
+                            Manage
+                        </MudButton>
+                    }
+                    else
+                    {
+                        @if (CanUpgradeTo("Bronze"))
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Style="max-width:200px; background:linear-gradient(135deg,#d97706,#b45309); color:white;"
+                                       FullWidth="true" Disabled="@_processingPlan"
+                                       OnClick="@(() => Subscribe("Bronze"))">
+                                @if (_processingPlan)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+                                }
+                                Upgrade
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="true" FullWidth="true" Style="max-width:200px;">
+                                Not available
+                            </MudButton>
+                        }
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        @* ── SILVER ──────────────────────────── *@
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="@(_currentPlan == "Silver" ? 8 : 4)" Class="pricing-card pricing-card-popular"
+                     Style="@GetCardStyle("Silver", "#475569", "#334155")">
+                <MudCardHeader Style="text-align:center; padding-bottom:0;">
+                    <CardHeaderContent>
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Style="margin-bottom:8px;">
+                            @(_currentPlan == "Silver" ? "Current plan" : "⭐ Popular")
+                        </MudChip>
+                        <MudIcon Icon="@Icons.Material.Filled.Diamond" Style="font-size:48px; color:#94a3b8; display:block; margin:0 auto 8px;"/>
+                        <MudText Typo="Typo.h5" Style="font-weight:700;">Silver</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Style="text-align:center;">
+                    <MudText Typo="Typo.h3" Style="font-weight:800; margin:16px 0 4px; color:#94a3b8;">
+                        @GetPayableAmount("Silver") <span style="font-size:0.4em; font-weight:400; color:inherit;">RON first payment</span>
+                    </MudText>
+                    @if (GetCreditAmount("Silver") > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Upgrade credit: -@GetCreditAmount("Silver") RON</MudText>
+                    }
+                    <MudDivider Class="my-3"/>
+                    <div class="pricing-features">
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>25 documents / month</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Max 3 MB / file</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>AI resume & clause analysis</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Priority support</MudText>
+                    </div>
+                </MudCardContent>
+                <MudCardActions Style="justify-content:center; padding-bottom:24px;">
+                    @if (IsCurrentPlan("Silver"))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Style="max-width:200px;"
+                                   OnClick="OpenPortal">
+                            Manage
+                        </MudButton>
+                    }
+                    else
+                    {
+                        @if (CanUpgradeTo("Silver"))
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Style="max-width:200px; background:linear-gradient(135deg,#5C6BC0,#3949AB); color:white;"
+                                       FullWidth="true" Disabled="@_processingPlan"
+                                       OnClick="@(() => Subscribe("Silver"))">
+                                @if (_processingPlan)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+                                }
+                                Upgrade
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="true" FullWidth="true" Style="max-width:200px;">
+                                Not available
+                            </MudButton>
+                        }
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        @* ── GOLD ────────────────────────────── *@
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="@(_currentPlan == "Gold" ? 8 : 2)" Class="pricing-card"
+                     Style="@GetCardStyle("Gold", "#854d0e", "#713f12")">
+                <MudCardHeader Style="text-align:center; padding-bottom:0;">
+                    <CardHeaderContent>
+                        @if (_currentPlan == "Gold")
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Style="margin-bottom:8px;">Current plan</MudChip>
+                        }
+                        <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Style="font-size:48px; color:#eab308; display:block; margin:0 auto 8px;"/>
+                        <MudText Typo="Typo.h5" Style="font-weight:700;">Gold</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Style="text-align:center;">
+                    <MudText Typo="Typo.h3" Style="font-weight:800; margin:16px 0 4px; color:#eab308;">
+                        @GetPayableAmount("Gold") <span style="font-size:0.4em; font-weight:400; color:inherit;">RON first payment</span>
+                    </MudText>
+                    @if (GetCreditAmount("Gold") > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Upgrade credit: -@GetCreditAmount("Gold") RON</MudText>
+                    }
+                    <MudDivider Class="my-3"/>
+                    <div class="pricing-features">
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>100 documents / month</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Max 10 MB / file</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>AI resume & clause analysis</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="mr-1"/>Exclusive support</MudText>
+                    </div>
+                </MudCardContent>
+                <MudCardActions Style="justify-content:center; padding-bottom:24px;">
+                    @if (IsCurrentPlan("Gold"))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true" Style="max-width:200px;"
+                                   OnClick="OpenPortal">
+                            Manage
+                        </MudButton>
+                    }
+                    else
+                    {
+                        @if (CanUpgradeTo("Gold"))
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Style="max-width:200px; background:linear-gradient(135deg,#eab308,#ca8a04); color:#1a1a2e;"
+                                       FullWidth="true" Disabled="@_processingPlan"
+                                       OnClick="@(() => Subscribe("Gold"))">
+                                @if (_processingPlan)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+                                }
+                                Upgrade
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="true" FullWidth="true" Style="max-width:200px;">
+                                Not available
+                            </MudButton>
+                        }
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    @if (_currentPlan != "Free" && _currentPlan is not null)
+    {
+        <MudPaper Class="pa-4 mt-6" Elevation="1" Style="border-radius:12px; text-align:center;">
+            <MudText Typo="Typo.body1" Class="mb-2">
+                Want to manage your subscription, change plans, or cancel?
+            </MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.ManageAccounts"
+                       OnClick="OpenPortal" Disabled="@_processingPlan">
+                Open Billing Portal
+            </MudButton>
+        </MudPaper>
+    }
+}
+
+<style>
+    .pricing-card {
+        border-radius: 16px !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+    .pricing-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
+    }
+    .pricing-card-popular {
+        border: 2px solid rgba(92, 107, 192, 0.5);
+    }
+    .pricing-card-popular:hover {
+        border-color: rgba(92, 107, 192, 0.8);
+    }
+    .pricing-features {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: left;
+        padding: 0 8px;
+    }
+</style>
+
+@code {
+    private bool _authReady;
+    private bool _processingPlan;
+    private string? _currentPlan;
+    private int _monthlyUsed;
+    private int _maxDocs;
+
+    private static readonly Dictionary<string, int> PlanRanks = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Free"] = 0,
+        ["Bronze"] = 1,
+        ["Silver"] = 2,
+        ["Gold"] = 3
+    };
+
+    private static readonly Dictionary<string, int> PlanPricesRon = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Free"] = 0,
+        ["Bronze"] = 50,
+        ["Silver"] = 100,
+        ["Gold"] = 200
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthState.OnChange += HandleAuthStateChanged;
+        await AuthService.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _authReady = true;
+        StateHasChanged();
+
+        if (AuthState.IsAuthenticated)
+        {
+            await LoadCurrentPlan();
+        }
+    }
+
+    private void HandleAuthStateChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (AuthState.IsAuthenticated)
+            {
+                await LoadCurrentPlan();
+            }
+            else
+            {
+                _currentPlan = null;
+                _monthlyUsed = 0;
+                _maxDocs = 0;
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadCurrentPlan()
+    {
+        try
+        {
+            var userId = ExtractUserIdFromToken();
+            if (string.IsNullOrEmpty(userId))
+                return;
+
+            var identityClient = ApiClient.CreateIdentityClient();
+            const int maxAttempts = 4;
+
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    var limits = await identityClient.GetFromJsonAsync<UserLimitsResponse>($"/api/auth/users/{userId}/limits");
+                    if (limits is null)
+                    {
+                        await Task.Delay(350);
+                        continue;
+                    }
+
+                    _currentPlan = limits.SubscriptionPlan;
+                    _monthlyUsed = limits.MonthlyDocumentsUploaded;
+                    _maxDocs = limits.MaxDocuments;
+                    StateHasChanged();
+                    return;
+                }
+                catch
+                {
+                    if (attempt < maxAttempts - 1)
+                        await Task.Delay(350 * (attempt + 1));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load current plan: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Subscribe(string plan)
+    {
+        if (_processingPlan)
+            return;
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: false);
+            return;
+        }
+
+        _processingPlan = true;
+        StateHasChanged();
+
+        try
+        {
+            var identityClient = ApiClient.CreateIdentityClient();
+            var response = await identityClient.PostAsJsonAsync("/api/auth/create-checkout-session", new CreateCheckoutRequest
+            {
+                Plan = plan
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to create checkout session: {err}", Severity.Error);
+                return;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<CheckoutResponse>();
+            if (payload is null || string.IsNullOrWhiteSpace(payload.CheckoutUrl))
+            {
+                Snackbar.Add("Invalid checkout response.", Severity.Error);
+                return;
+            }
+
+            Navigation.NavigateTo(payload.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Subscription error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processingPlan = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenPortal()
+    {
+        if (_processingPlan)
+            return;
+
+        _processingPlan = true;
+        StateHasChanged();
+
+        try
+        {
+            var identityClient = ApiClient.CreateIdentityClient();
+            var response = await identityClient.PostAsync("/api/auth/create-portal-session", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Could not open billing portal: {err}", Severity.Error);
+                return;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<PortalResponse>();
+            if (payload is null || string.IsNullOrWhiteSpace(payload.PortalUrl))
+            {
+                Snackbar.Add("Invalid portal response.", Severity.Error);
+                return;
+            }
+
+            Navigation.NavigateTo(payload.PortalUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not open portal: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processingPlan = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetCardStyle(string plan, string color1, string color2)
+    {
+        var isCurrent = string.Equals(_currentPlan, plan, StringComparison.OrdinalIgnoreCase);
+        var isUnavailable = !isCurrent && !CanUpgradeTo(plan);
+
+        if (isUnavailable)
+        {
+            return "background:linear-gradient(160deg,#374151,#1f2937); border:1px solid rgba(148,163,184,0.35);";
+        }
+
+        var border = isCurrent ? "2px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)";
+        return $"background:linear-gradient(160deg,{color1},{color2}); border:{border};";
+    }
+
+    private string ExtractUserIdFromToken()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(AuthState.Token))
+                return string.Empty;
+
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(AuthState.Token);
+
+            var userId = token.Claims.FirstOrDefault(c =>
+                c.Type == System.Security.Claims.ClaimTypes.NameIdentifier || c.Type == "sub")?.Value;
+
+            return userId ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private bool IsCurrentPlan(string plan)
+    {
+        return string.Equals(_currentPlan, plan, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool CanUpgradeTo(string targetPlan)
+    {
+        if (!PlanRanks.TryGetValue(targetPlan, out var targetRank))
+            return false;
+
+        var currentRank = 0;
+        if (!string.IsNullOrWhiteSpace(_currentPlan) && PlanRanks.TryGetValue(_currentPlan, out var rank))
+            currentRank = rank;
+
+        return targetRank > currentRank;
+    }
+
+    private int GetCreditAmount(string targetPlan)
+    {
+        if (!CanUpgradeTo(targetPlan) || string.IsNullOrWhiteSpace(_currentPlan))
+            return 0;
+
+        if (!PlanPricesRon.TryGetValue(_currentPlan, out var currentPrice))
+            return 0;
+
+        if (!PlanPricesRon.TryGetValue(targetPlan, out var targetPrice))
+            return 0;
+
+        return Math.Max(0, Math.Min(currentPrice, targetPrice - 1));
+    }
+
+    private int GetPayableAmount(string targetPlan)
+    {
+        if (!PlanPricesRon.TryGetValue(targetPlan, out var targetPrice))
+            return 0;
+
+        var credit = GetCreditAmount(targetPlan);
+        return Math.Max(1, targetPrice - credit);
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= HandleAuthStateChanged;
+    }
+}

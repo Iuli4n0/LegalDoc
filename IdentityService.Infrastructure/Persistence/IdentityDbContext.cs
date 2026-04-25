@@ -23,9 +23,23 @@ public class IdentityDbContext : DbContext
             entity.Property(u => u.LastLoginAt);
             entity.Property(u => u.Role).IsRequired().HasMaxLength(50).HasDefaultValue("User");
             entity.Property(u => u.TotalDocumentsUploaded).IsRequired().HasDefaultValue(0);
-            entity.Property(u => u.MaxDocuments).IsRequired().HasDefaultValue(3);
-            entity.Property(u => u.MaxDocumentSizeMb).IsRequired().HasDefaultValue(10);
+            entity.Property(u => u.MaxDocuments).IsRequired().HasDefaultValue(1);
+            entity.Property(u => u.MaxDocumentSizeMb).IsRequired().HasDefaultValue(1);
             entity.HasIndex(u => u.Email).IsUnique();
+
+            // Subscription fields
+            entity.Property(u => u.SubscriptionPlan)
+                .IsRequired()
+                .HasDefaultValue(SubscriptionPlan.Free)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            entity.Property(u => u.StripeCustomerId).HasMaxLength(255);
+            entity.Property(u => u.StripeSubscriptionId).HasMaxLength(255);
+            entity.Property(u => u.MonthlyDocumentsUploaded).IsRequired().HasDefaultValue(0);
+            entity.Property(u => u.CurrentPeriodEnd).IsRequired();
+
+            entity.HasIndex(u => u.StripeCustomerId).IsUnique().HasFilter("\"StripeCustomerId\" IS NOT NULL");
         });
     }
 }

@@ -12,7 +12,10 @@ public record AdminUserDto(
     DateTime? LastLoginAt,
     int TotalDocumentsUploaded,
     int MaxDocuments,
-    int MaxDocumentSizeMb
+    int MaxDocumentSizeMb,
+    string SubscriptionPlan,
+    int MonthlyDocumentsUploaded,
+    DateTime CurrentPeriodEnd
 );
 
 public record GetAllUsersResponse(IEnumerable<AdminUserDto> Users);
@@ -27,5 +30,9 @@ public record UserLimitsResponse(
     int TotalDocumentsUploaded,
     int MaxDocuments,
     int MaxDocumentSizeMb,
-    bool CanUpload
+    bool CanUpload,
+    string SubscriptionPlan,
+    int MonthlyDocumentsUploaded,
+    DateTime CurrentPeriodEnd,
+    int RemainingUploads
 );

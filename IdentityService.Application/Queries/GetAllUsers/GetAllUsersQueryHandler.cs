@@ -28,7 +28,10 @@ public class GetAllUsersQueryHandler : IRequestHandler<GetAllUsersQuery, GetAllU
             u.LastLoginAt,
             u.TotalDocumentsUploaded,
             u.MaxDocuments,
-            u.MaxDocumentSizeMb
+            u.MaxDocumentSizeMb,
+            u.SubscriptionPlan.ToString(),
+            u.MonthlyDocumentsUploaded,
+            u.CurrentPeriodEnd
         ));
 
         return new GetAllUsersResponse(summaries);

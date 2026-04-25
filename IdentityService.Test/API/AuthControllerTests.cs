@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using IdentityService.API.Controllers;
+using IdentityService.Application.Abstractions;
 using IdentityService.Application.Commands.LoginUser;
 using IdentityService.Application.Commands.RegisterUser;
 using IdentityService.Application.Queries.GetUserById;
@@ -13,12 +14,14 @@ namespace IdentityService.Test.API;
 public class AuthControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
     {
         _mediatorMock = new Mock<IMediator>();
-        _controller = new AuthController(_mediatorMock.Object);
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _controller = new AuthController(_mediatorMock.Object, _userRepositoryMock.Object);
     }
 
     [Fact]
@@ -152,7 +155,7 @@ public class AuthControllerTests
     public async Task Given_ValidNameIdentifierClaim_When_GetCurrentUserIsCalled_Then_ShouldReturnOk()
     {
         var userId = Guid.NewGuid();
-        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 3, 10);
+        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 1, 1, "Free", 0, DateTime.UtcNow.AddMonths(1));
         SetClaimsPrincipal(new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) });
 
         _mediatorMock
@@ -170,7 +173,7 @@ public class AuthControllerTests
     public async Task Given_ExistingUserId_When_GetUserIsCalled_Then_ShouldReturnOk()
     {
         var userId = Guid.NewGuid();
-        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 3, 10);
+        var response = new GetUserByIdResponse(userId, "test@example.com", "Ion Popescu", DateTime.UtcNow, null, "User", 0, 1, 1, "Free", 0, DateTime.UtcNow.AddMonths(1));
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<GetUserByIdQuery>(q => q.Id == userId), It.IsAny<CancellationToken>()))

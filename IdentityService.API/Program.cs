@@ -6,8 +6,33 @@ using IdentityService.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Stripe;
+
+// Load .env file from solution root (two levels up from bin/Debug)
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+if (System.IO.File.Exists(envPath))
+    DotNetEnv.Env.Load(envPath);
+else if (System.IO.File.Exists(".env"))
+    DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Map flat .env variables to ASP.NET configuration hierarchy
+var envMappings = new Dictionary<string, string?>
+{
+    ["Stripe:SecretKey"]      = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
+    ["Stripe:WebhookSecret"]  = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET"),
+    ["Stripe:Prices:Bronze"]  = Environment.GetEnvironmentVariable("STRIPE_PRICE_BRONZE"),
+    ["Stripe:Prices:Silver"]  = Environment.GetEnvironmentVariable("STRIPE_PRICE_SILVER"),
+    ["Stripe:Prices:Gold"]    = Environment.GetEnvironmentVariable("STRIPE_PRICE_GOLD"),
+};
+
+// Only add non-null values so appsettings defaults aren't overwritten with nulls
+var filtered = envMappings.Where(kv => !string.IsNullOrEmpty(kv.Value))
+    .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+if (filtered.Count > 0)
+    builder.Configuration.AddInMemoryCollection(filtered!);
 
 const string corsPolicy = "AllowFrontend";
 const string defaultIssuer = "LegalDoc";
@@ -48,6 +73,14 @@ builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(co
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<IStripeService, StripeService>();
+
+// Stripe configuration
+var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
+if (!string.IsNullOrEmpty(stripeSecretKey))
+{
+    StripeConfiguration.ApiKey = stripeSecretKey;
+}
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

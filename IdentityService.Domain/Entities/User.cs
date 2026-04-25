@@ -4,8 +4,6 @@ namespace IdentityService.Domain.Entities;
 
 public class User
 {
-    private const int DefaultMaxDocuments = 3;
-    private const int DefaultMaxDocumentSizeMb = 10;
     private const string RoleUser = "User";
 
     private User()
@@ -20,8 +18,25 @@ public class User
     public DateTime? LastLoginAt { get; private set; }
     public string Role { get; private set; } = RoleUser;
     public int TotalDocumentsUploaded { get; private set; }
-    public int MaxDocuments { get; private set; } = DefaultMaxDocuments;
-    public int MaxDocumentSizeMb { get; private set; } = DefaultMaxDocumentSizeMb;
+    public int MaxDocuments { get; private set; } = 1;
+    public int MaxDocumentSizeMb { get; private set; } = 1;
+
+    // ── Subscription ───────────────────────────────────────
+    public SubscriptionPlan SubscriptionPlan { get; private set; } = SubscriptionPlan.Free;
+    public string? StripeCustomerId { get; private set; }
+    public string? StripeSubscriptionId { get; private set; }
+    public int MonthlyDocumentsUploaded { get; private set; }
+    public DateTime CurrentPeriodEnd { get; private set; } = DateTime.UtcNow.AddMonths(1);
+
+    // ── Plan limits mapping ────────────────────────────────
+    private static (int maxDocs, int maxSizeMb) GetPlanLimits(SubscriptionPlan plan) => plan switch
+    {
+        SubscriptionPlan.Free   => (1, 1),
+        SubscriptionPlan.Bronze => (5, 1),
+        SubscriptionPlan.Silver => (25, 3),
+        SubscriptionPlan.Gold   => (100, 10),
+        _ => (1, 1)
+    };
 
     public static User Create(string email, string passwordHash, string fullName)
     {
@@ -34,6 +49,8 @@ public class User
         if (string.IsNullOrWhiteSpace(fullName))
             throw new ArgumentException("Full name cannot be empty.", nameof(fullName));
         
+        var (maxDocs, maxSizeMb) = GetPlanLimits(SubscriptionPlan.Free);
+
         return new User
         {
             Id = Guid.NewGuid(),
@@ -44,8 +61,11 @@ public class User
             LastLoginAt = null,
             Role = RoleUser,
             TotalDocumentsUploaded = 0,
-            MaxDocuments = DefaultMaxDocuments,
-            MaxDocumentSizeMb = DefaultMaxDocumentSizeMb
+            MonthlyDocumentsUploaded = 0,
+            MaxDocuments = maxDocs,
+            MaxDocumentSizeMb = maxSizeMb,
+            SubscriptionPlan = SubscriptionPlan.Free,
+            CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1)
         };
     }
 
@@ -56,7 +76,9 @@ public class User
 
     public void IncrementDocumentCount()
     {
+        ResetMonthlyCounterIfNeeded();
         TotalDocumentsUploaded++;
+        MonthlyDocumentsUploaded++;
     }
 
     public void UpdateLimits(int maxDocuments, int maxDocumentSizeMb)
@@ -70,6 +92,34 @@ public class User
         MaxDocumentSizeMb = maxDocumentSizeMb;
     }
 
+    public void UpdateSubscription(SubscriptionPlan plan, string? stripeSubscriptionId = null)
+    {
+        SubscriptionPlan = plan;
+        StripeSubscriptionId = stripeSubscriptionId;
+
+        var (maxDocs, maxSizeMb) = GetPlanLimits(plan);
+        MaxDocuments = maxDocs;
+        MaxDocumentSizeMb = maxSizeMb;
+    }
+
+    public void SetStripeCustomerId(string customerId)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+            throw new ArgumentException("Stripe customer ID cannot be empty.", nameof(customerId));
+        StripeCustomerId = customerId;
+    }
+
+    public void SetCurrentPeriodEnd(DateTime periodEnd)
+    {
+        CurrentPeriodEnd = periodEnd;
+    }
+
+    public void ResetMonthlyCounter()
+    {
+        MonthlyDocumentsUploaded = 0;
+        CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
+    }
+
     public void SetRole(string role)
     {
         if (string.IsNullOrWhiteSpace(role))
@@ -78,5 +128,24 @@ public class User
         Role = role;
     }
 
-    public bool CanUploadDocument() => TotalDocumentsUploaded < MaxDocuments;
+    public bool CanUploadDocument()
+    {
+        ResetMonthlyCounterIfNeeded();
+        return MonthlyDocumentsUploaded < MaxDocuments;
+    }
+
+    public int GetRemainingUploads()
+    {
+        ResetMonthlyCounterIfNeeded();
+        return Math.Max(0, MaxDocuments - MonthlyDocumentsUploaded);
+    }
+
+    private void ResetMonthlyCounterIfNeeded()
+    {
+        if (DateTime.UtcNow >= CurrentPeriodEnd)
+        {
+            MonthlyDocumentsUploaded = 0;
+            CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
+        }
+    }
 }
