@@ -1,0 +1,180 @@
+@page "/subscription/success"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Services
+@using LegalDoc.Frontend.Models
+@using System.IdentityModel.Tokens.Jwt
+@using Microsoft.AspNetCore.WebUtilities
+@inject AuthService AuthService
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject ApiClient ApiClient
+
+<PageTitle>LegalDoc – Subscription Activated</PageTitle>
+
+<div style="text-align:center; padding:60px 20px;">
+    @if (!_subscriptionVerified)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1" Style="margin-top:16px;">Verifying your subscription...</MudText>
+    }
+    else
+    {
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
+                 Style="font-size:96px; color:#66BB6A; margin-bottom:24px; display:block; margin-left:auto; margin-right:auto;"/>
+        
+        <MudText Typo="Typo.h4" Style="font-weight:700; margin-bottom:12px;">
+            Subscription activated successfully! 🎉
+        </MudText>
+        
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Style="max-width:500px; margin:0 auto 32px;">
+            Thank you for subscribing! Your plan has been activated and your limits have been updated automatically.
+            You can start uploading documents right away.
+        </MudText>
+
+        <MudGrid Justify="Justify.Center" Spacing="3">
+            <MudItem>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           Href="/upload">
+                    Upload a Document
+                </MudButton>
+            </MudItem>
+            <MudItem>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Person"
+                           Href="/profile">
+                    My Profile
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _subscriptionVerified;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await VerifySubscriptionAsync();
+    }
+
+    private async Task VerifySubscriptionAsync()
+    {
+        try
+        {
+            var userId = await WaitForUserIdAsync();
+            if (string.IsNullOrEmpty(userId))
+            {
+                _subscriptionVerified = true;
+                StateHasChanged();
+                return;
+            }
+
+            var sessionId = GetSessionIdFromQuery();
+            if (!string.IsNullOrEmpty(sessionId))
+            {
+                await TrySyncCheckoutSessionAsync(sessionId);
+            }
+
+            var identityClient = ApiClient.CreateIdentityClient();
+            const int maxAttempts = 8;
+
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    var limits = await identityClient.GetFromJsonAsync<UserLimitsResponse>($"/api/auth/users/{userId}/limits");
+                    if (limits is not null && limits.SubscriptionPlan != "Free")
+                    {
+                        _subscriptionVerified = true;
+                        StateHasChanged();
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Keep retrying; webhook or sync endpoint may still be in progress.
+                }
+
+                await Task.Delay(750);
+            }
+
+            _subscriptionVerified = true;
+            StateHasChanged();
+        }
+        catch
+        {
+            _subscriptionVerified = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<string> WaitForUserIdAsync()
+    {
+        const int maxAttempts = 10;
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            if (AuthState.IsAuthenticated)
+            {
+                var userId = ExtractUserIdFromToken();
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    return userId;
+                }
+            }
+
+            await Task.Delay(300);
+            await AuthService.InitializeAsync();
+        }
+
+        return string.Empty;
+    }
+
+    private async Task TrySyncCheckoutSessionAsync(string sessionId)
+    {
+        try
+        {
+            var identityClient = ApiClient.CreateIdentityClient();
+            await identityClient.PostAsJsonAsync("/api/auth/sync-checkout-session", new { sessionId });
+        }
+        catch
+        {
+            // Non-blocking: polling still works if webhook updates DB first.
+        }
+    }
+
+    private string? GetSessionIdFromQuery()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        return query.TryGetValue("session_id", out var sessionId)
+            ? sessionId.ToString()
+            : null;
+    }
+
+    private string ExtractUserIdFromToken()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(AuthState.Token))
+                return string.Empty;
+
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(AuthState.Token);
+            return token.Claims.First(c =>
+                c.Type == System.Security.Claims.ClaimTypes.NameIdentifier || c.Type == "sub").Value;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+}

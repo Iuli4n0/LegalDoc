@@ -9,5 +9,9 @@ public record CheckUserLimitsResponse(
     int TotalDocumentsUploaded,
     int MaxDocuments,
     int MaxDocumentSizeMb,
-    bool CanUpload
+    bool CanUpload,
+    string SubscriptionPlan,
+    int MonthlyDocumentsUploaded,
+    DateTime CurrentPeriodEnd,
+    int RemainingUploads
 );

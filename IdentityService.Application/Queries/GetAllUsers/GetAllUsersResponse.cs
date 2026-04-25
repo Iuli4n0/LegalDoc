@@ -14,5 +14,8 @@ public record UserSummary(
     DateTime? LastLoginAt,
     int TotalDocumentsUploaded,
     int MaxDocuments,
-    int MaxDocumentSizeMb
+    int MaxDocumentSizeMb,
+    string SubscriptionPlan,
+    int MonthlyDocumentsUploaded,
+    DateTime CurrentPeriodEnd
 );

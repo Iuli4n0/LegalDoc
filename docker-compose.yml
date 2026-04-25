@@ -63,6 +63,14 @@ services:
       JwtSettings__Issuer: ${JWT_ISSUER}
       JwtSettings__Audience: ${JWT_AUDIENCE}
       JwtSettings__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
+      Stripe__Prices__Bronze: ${STRIPE_PRICE_BRONZE}
+      Stripe__Prices__Silver: ${STRIPE_PRICE_SILVER}
+      Stripe__Prices__Gold: ${STRIPE_PRICE_GOLD}
+      Stripe__SuccessUrl: "http://localhost:8080/subscription/success"
+      Stripe__CancelUrl: "http://localhost:8080/subscription/cancel"
+      Stripe__PortalReturnUrl: "http://localhost:8080/pricing"
       CorsOrigins: "http://localhost:8080,http://frontend:8080"
     depends_on:
       postgres:

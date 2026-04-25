@@ -11,5 +11,8 @@ public record GetUserByIdResponse(
     string Role,
     int TotalDocumentsUploaded,
     int MaxDocuments,
-    int MaxDocumentSizeMb
+    int MaxDocumentSizeMb,
+    string SubscriptionPlan,
+    int MonthlyDocumentsUploaded,
+    DateTime CurrentPeriodEnd
 );

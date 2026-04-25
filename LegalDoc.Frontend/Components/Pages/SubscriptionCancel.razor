@@ -1,0 +1,32 @@
+@page "/subscription/cancel"
+@rendermode InteractiveServer
+@using LegalDoc.Frontend.Services
+@inject AuthService AuthService
+
+<PageTitle>LegalDoc – Payment Cancelled</PageTitle>
+
+<div style="text-align:center; padding:60px 20px;">
+    <MudIcon Icon="@Icons.Material.Filled.Cancel" 
+             Style="font-size:96px; color:#EF5350; margin-bottom:24px; display:block; margin-left:auto; margin-right:auto;"/>
+    
+    <MudText Typo="Typo.h4" Style="font-weight:700; margin-bottom:12px;">
+        Payment was cancelled
+    </MudText>
+    
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Style="max-width:500px; margin:0 auto 32px;">
+        No payment was made. You can come back anytime to choose a plan that suits you.
+    </MudText>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Href="/pricing">
+        Back to Plans
+    </MudButton>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+    }
+}

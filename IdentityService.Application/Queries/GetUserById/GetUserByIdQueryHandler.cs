@@ -30,8 +30,10 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, GetUser
             user.Role,
             user.TotalDocumentsUploaded,
             user.MaxDocuments,
-            user.MaxDocumentSizeMb
+            user.MaxDocumentSizeMb,
+            user.SubscriptionPlan.ToString(),
+            user.MonthlyDocumentsUploaded,
+            user.CurrentPeriodEnd
         );
     }
 }
-

@@ -40,6 +40,7 @@
     <MudDrawer @bind-Open="_drawerOpen" Elevation="0" ClipMode="DrawerClipMode.Always"
                Style="background: #0f1123; border-right: 1px solid rgba(255,255,255,0.06);">
         <MudNavMenu Color="Color.Primary" Bordered="true" Class="mt-2">
+            <MudNavLink Href="/pricing" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Payments" Style="color: #eab308;">Plans & Pricing</MudNavLink>
             @if (AuthState.IsAuthenticated)
             {
                 <MudNavLink Href="/upload" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudUpload">Upload Document</MudNavLink>

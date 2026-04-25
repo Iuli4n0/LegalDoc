@@ -22,11 +22,21 @@ public class CheckUserLimitsQueryHandler : IRequestHandler<CheckUserLimitsQuery,
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
 
+        // CanUploadDocument triggers lazy monthly reset internally
+        var canUpload = user.CanUploadDocument();
+
+        // If the monthly counter was reset, persist the change
+        await _userRepository.UpdateAsync(user);
+
         return new CheckUserLimitsResponse(
             user.TotalDocumentsUploaded,
             user.MaxDocuments,
             user.MaxDocumentSizeMb,
-            user.CanUploadDocument()
+            canUpload,
+            user.SubscriptionPlan.ToString(),
+            user.MonthlyDocumentsUploaded,
+            user.CurrentPeriodEnd,
+            user.GetRemainingUploads()
         );
     }
 }
