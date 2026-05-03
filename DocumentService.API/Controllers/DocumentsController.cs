@@ -1,10 +1,12 @@
 using System;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using DocumentService.Application.Commands.AskDocumentQuestion;
 using DocumentService.Application.Commands.ClassifyDocumentClauses;
 using DocumentService.Application.Commands.DeleteDocument;
 using DocumentService.Application.Commands.GenerateDocumentClauses;
 using DocumentService.Application.Commands.GenerateDocumentResume;
+using DocumentService.Application.Commands.IndexDocument;
 using DocumentService.Application.Commands.UploadDocument;
 using DocumentService.Application.Queries.DownloadDocument;
 using DocumentService.Application.Queries.GetDocument;
@@ -354,6 +356,196 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/index")]
+    public async Task<ActionResult<IndexDocumentResponse>> IndexDocument(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var command = new IndexDocumentCommand(id);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (NotSupportedException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(GatewayTimeoutStatusCode, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to index document: {ex.Message}");
+        }
+    }
+
+    [HttpPost("{id:guid}/ask")]
+    public async Task<ActionResult<AskDocumentQuestionResponse>> AskQuestion(Guid id, [FromBody] AskQuestionRequest request)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.Question))
+            return BadRequest("Question cannot be empty.");
+
+        try
+        {
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var command = new AskDocumentQuestionCommand(id, request.Question);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (NotSupportedException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(GatewayTimeoutStatusCode, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to answer question: {ex.Message}");
+        }
+    }
+
+    [HttpGet("{id:guid}/qa-history")]
+    public async Task<ActionResult<DocumentService.Application.Queries.GetDocumentConversation.GetDocumentConversationResponse>> GetQaHistory(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        try
+        {
+            var query = new GetDocumentQuery(id);
+            var document = await _mediator.Send(query);
+
+            if (document is null)
+                return NotFound();
+
+            if (document.UserId != userId)
+                return Forbid();
+
+            var conversationQuery = new DocumentService.Application.Queries.GetDocumentConversation.GetDocumentConversationQuery(id);
+            var response = await _mediator.Send(conversationQuery);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to retrieve Q&A history: {ex.Message}");
+        }
+    }
+
+    [HttpPost("{id:guid}/clauses")]
+    public async Task<ActionResult<DocumentService.Application.Commands.AddDocumentClause.AddDocumentClauseResponse>> AddClause(Guid id, [FromBody] AddClauseRequest request)
+    {
+        var userIdString = GetUserId();
+        if (userIdString is null)
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.Text))
+            return BadRequest("Clause text cannot be empty.");
+
+        try
+        {
+            var command = new DocumentService.Application.Commands.AddDocumentClause.AddDocumentClauseCommand(id, userIdString, request.Text);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to add clause: {ex.Message}");
+        }
+    }
+
+    [HttpDelete("{id:guid}/clauses/{clauseId:guid}")]
+    public async Task<IActionResult> DeleteClause(Guid id, Guid clauseId)
+    {
+        var userIdString = GetUserId();
+        if (userIdString is null)
+            return Unauthorized();
+
+        try
+        {
+            var command = new DocumentService.Application.Commands.DeleteDocumentClause.DeleteDocumentClauseCommand(id, userIdString, clauseId);
+            await _mediator.Send(command);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to delete clause: {ex.Message}");
+        }
+    }
+
+    [HttpPost("{id:guid}/clauses/merge")]
+    public async Task<ActionResult<DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesResponse>> MergeClauses(Guid id, [FromBody] MergeClausesRequest request)
+    {
+        var userIdString = GetUserId();
+        if (userIdString is null)
+            return Unauthorized();
+
+        if (request.FirstClauseId == request.SecondClauseId)
+            return BadRequest("Cannot merge a clause with itself.");
+
+        try
+        {
+            var command = new DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesCommand(id, userIdString, request.FirstClauseId, request.SecondClauseId);
+            var response = await _mediator.Send(command);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(InternalServerErrorStatusCode, $"Failed to merge clauses: {ex.Message}");
+        }
+    }
+
     private HttpClient CreateIdentityClient()
     {
         var client = _httpClientFactory.CreateClient("IdentityAPI");
@@ -374,3 +566,8 @@ public class DocumentsController : ControllerBase
 
 // DTO for IdentityService limits response
 public record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);
+
+public record AskQuestionRequest(string Question);
+
+public record AddClauseRequest(string Text);
+public record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);

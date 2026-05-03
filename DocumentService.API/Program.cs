@@ -55,13 +55,18 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("Database connection string 'DefaultConnection' is not configured.");
 
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString, o => o.UseVector()));
 
 // Application services
 builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<ITextExtractionService, TextExtractionService>();
 builder.Services.AddScoped<IResumeGeneratorService, OllamaResumeService>();
+builder.Services.AddScoped<IEmbeddingService, OllamaEmbeddingService>();
+builder.Services.AddScoped<IQAService, OllamaQAService>();
+builder.Services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
+builder.Services.AddScoped<IDocumentMessageRepository, DocumentMessageRepository>();
 
 
 builder.Services.AddHttpClient<IClauseExtractorService, OllamaClauseExtractionService>(client =>
@@ -75,6 +80,7 @@ builder.Services.AddHttpClient<IClauseClassificationService, ClauseClassificatio
     client.Timeout = TimeSpan.FromSeconds(90);
 });
 builder.Services.AddScoped<IClauseRepository, ClauseRepository>();
+
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

@@ -1,6 +1,7 @@
 using DocumentService.Domain.Entities;
 using DocumentService.Infrastructure.Persistence;
 using DocumentService.Infrastructure.Repositories;
+using DocumentService.Test.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocumentService.Test.Infrastructure.Repositories;
@@ -65,12 +66,13 @@ public class DocumentRepositoryTests
         Assert.NotNull(updated.ResumeGeneratedAt);
     }
 
-    private static AppDbContext CreateContext()
+    private static TestAppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        return new AppDbContext(options);
+        return new TestAppDbContext(options);
     }
 }
+

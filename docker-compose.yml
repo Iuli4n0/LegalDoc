@@ -2,7 +2,7 @@ services:
   # ── Infrastructure ────────────────────────────────────
 
   postgres:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     container_name: legaldoc-postgres
     restart: unless-stopped
     environment:
@@ -44,6 +44,19 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+
+  ollama-embed-init:
+    image: ollama/ollama:latest
+    container_name: legaldoc-ollama-embed-init
+    restart: "no"
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+    command: ["pull", "${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
 
   # ── Application Services ──────────────────────────────
 
@@ -106,6 +119,7 @@ services:
       Ollama__Endpoint: "http://ollama:11434"
       Ollama__Model: "${OLLAMA_MODEL:-llama3.1:latest}"
       Ollama__ChunkSize: "${OLLAMA_CHUNK_SIZE:-8000}"
+      Ollama__EmbeddingModel: "${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}"
       Classifier__BaseUrl: "http://classifier:8000"
       CorsOrigins: "http://localhost:8080,http://frontend:8080"
     depends_on:
@@ -114,6 +128,8 @@ services:
       ollama:
         condition: service_healthy
       ollama-init:
+        condition: service_completed_successfully
+      ollama-embed-init:
         condition: service_completed_successfully
       classifier:
         condition: service_healthy
