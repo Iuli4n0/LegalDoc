@@ -13,4 +13,6 @@ public interface IClauseRepository
     Task<IReadOnlyList<Clause>> GetByDocumentIdAsync(Guid documentId);
     Task ReplaceForDocumentAsync(Guid documentId, IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default);
     Task UpdateRangeAsync(IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default);
+    Task<Clause?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Clause clause, CancellationToken cancellationToken = default);
 }

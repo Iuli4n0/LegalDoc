@@ -29,12 +29,27 @@ public class AppDbContextTests
         Assert.Equal(doc.Id, loaded.Id);
     }
 
-    private static AppDbContext CreateContext()
+    private static TestAppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        return new AppDbContext(options);
+        return new TestAppDbContext(options);
+    }
+}
+
+/// <summary>
+/// Test-specific DbContext that ignores the pgvector Embedding property
+/// which is not supported by the InMemory provider.
+/// </summary>
+internal class TestAppDbContext : AppDbContext
+{
+    public TestAppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<DocumentChunk>().Ignore(c => c.Embedding);
     }
 }

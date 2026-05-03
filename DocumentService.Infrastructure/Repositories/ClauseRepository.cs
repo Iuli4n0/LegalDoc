@@ -66,4 +66,15 @@ public class ClauseRepository : IClauseRepository
         _dbContext.Clauses.UpdateRange(clauses);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Clause?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Clauses.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
+    public async Task DeleteAsync(Clause clause, CancellationToken cancellationToken = default)
+    {
+        _dbContext.Clauses.Remove(clause);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

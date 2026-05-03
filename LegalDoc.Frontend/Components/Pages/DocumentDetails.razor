@@ -64,6 +64,14 @@
                     <MudText>Download Document</MudText>
                 }
             </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Href="@($"/documents/{Id}/qa")"
+                       Disabled="@(!_authReady)"
+                       StartIcon="@Icons.Material.Filled.QuestionAnswer"
+                       Class="ml-2">
+                Q&A
+            </MudButton>
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Error"
                        OnClick="ConfirmDeleteDocument"
@@ -143,8 +151,11 @@
                 <MudList T="DocumentClauseItem" Dense="true">
                     @foreach (var clause in _clauses)
                     {
-                        <MudListItem T="DocumentClauseItem">
-                            <div style="width:100%;display:flex;gap:8px;align-items:flex-start;justify-content:space-between">
+                        <MudListItem T="DocumentClauseItem" Style="border-bottom: 1px solid var(--mud-palette-divider);">
+                            <div style="width:100%;display:flex;gap:8px;align-items:center;justify-content:space-between">
+                                <MudCheckBox T="bool" Value="@_selectedClauses.Contains(clause.ClauseId)" 
+                                             ValueChanged="@((bool v) => ToggleClauseSelection(clause.ClauseId))" 
+                                             Color="Color.Primary" Dense="true" />
                                 <MudText Typo="Typo.body2" Style="white-space:pre-wrap;flex:1">@clause.Text</MudText>
                                 @if (clause.IsAbusive.HasValue)
                                 {
@@ -156,6 +167,7 @@
                                 {
                                     <MudChip Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">Neclasificata</MudChip>
                                 }
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeleteClause(clause.ClauseId))" Title="Delete Clause"/>
                             </div>
                         </MudListItem>
                     }
@@ -179,7 +191,7 @@
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        OnClick="ExtractClauses"
-                       Disabled="@(_extractingClauses || _classifyingClauses || !_authReady)"
+                       Disabled="@(_extractingClauses || _classifyingClauses || !_authReady || _workingOnClauses)"
                        StartIcon="@Icons.Material.Filled.Gavel">
                 @if (_extractingClauses)
                 {
@@ -194,7 +206,7 @@
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Secondary"
                        OnClick="ClassifyClauses"
-                       Disabled="@(_classifyingClauses || _extractingClauses || !_authReady || _clauses.Count == 0)"
+                       Disabled="@(_classifyingClauses || _extractingClauses || !_authReady || _clauses.Count == 0 || _workingOnClauses)"
                        StartIcon="@Icons.Material.Filled.FactCheck"
                        Class="ml-2">
                 @if (_classifyingClauses)
@@ -206,6 +218,23 @@
                 {
                     <MudText>Clasifica toate clauzele</MudText>
                 }
+            </MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       OnClick="AddClause"
+                       Disabled="@(!_authReady || _workingOnClauses)"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Class="ml-2">
+                Add Clause
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Warning"
+                       OnClick="MergeClauses"
+                       Disabled="@(_selectedClauses.Count != 2 || _workingOnClauses || !_authReady)"
+                       StartIcon="@Icons.Material.Filled.MergeType"
+                       Class="ml-2">
+                Merge Selected
             </MudButton>
         </MudCardActions>
     </MudCard>
@@ -229,6 +258,9 @@
     private DateTime? _clausesGeneratedAt;
     private int? _clausesChunksProcessed;
     private bool _clausesExtractionAttempted;
+    
+    private HashSet<Guid> _selectedClauses = [];
+    private bool _workingOnClauses;
 
     protected override async Task OnInitializedAsync()
     {
@@ -310,6 +342,7 @@
                             _clausesExtractionAttempted = true;
                         }
                     }
+                    _selectedClauses.Clear();
                 }
                 catch (Exception ex)
                 {
@@ -566,6 +599,137 @@
         finally
         {
             _deleting = false;
+        }
+    }
+
+    private void ToggleClauseSelection(Guid clauseId)
+    {
+        if (_selectedClauses.Contains(clauseId))
+        {
+            _selectedClauses.Remove(clauseId);
+        }
+        else
+        {
+            if (_selectedClauses.Count >= 2)
+            {
+                Snackbar.Add("You can only select up to 2 clauses for merging.", Severity.Warning);
+                return;
+            }
+            _selectedClauses.Add(clauseId);
+        }
+    }
+
+    private async Task ConfirmDeleteClause(Guid clauseId)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Message, "Are you sure you want to delete this clause?" },
+            { x => x.YesText, "Delete" },
+            { x => x.CancelText, "Cancel" }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("⚠️ Delete Clause", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await DeleteClause(clauseId);
+    }
+
+    private async Task DeleteClause(Guid clauseId)
+    {
+        if (_document is null) return;
+        _workingOnClauses = true;
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var response = await client.DeleteAsync($"/api/documents/{_document.Id}/clauses/{clauseId}");
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Clause deleted successfully.", Severity.Success);
+                await LoadDocument(_document.Id);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error deleting clause: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _workingOnClauses = false;
+        }
+    }
+
+    private async Task MergeClauses()
+    {
+        if (_document is null || _selectedClauses.Count != 2) return;
+        _workingOnClauses = true;
+        try
+        {
+            var client = ApiClient.CreateClient();
+            var requestList = _selectedClauses.ToList();
+            var request = new MergeClausesRequest(requestList[0], requestList[1]);
+            var response = await client.PostAsJsonAsync($"/api/documents/{_document.Id}/clauses/merge", request);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Clauses merged successfully.", Severity.Success);
+                await LoadDocument(_document.Id);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error merging clauses: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _workingOnClauses = false;
+        }
+    }
+
+    private async Task AddClause()
+    {
+        if (_document is null) return;
+
+        var dialog = await DialogService.ShowAsync<AddClauseDialog>("Add Manual Clause", new DialogOptions { CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string text })
+        {
+            _workingOnClauses = true;
+            try
+            {
+                var client = ApiClient.CreateClient();
+                var request = new AddClauseRequest(text);
+                var response = await client.PostAsJsonAsync($"/api/documents/{_document.Id}/clauses", request);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Clause added successfully.", Severity.Success);
+                    await LoadDocument(_document.Id);
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Error adding clause: {error}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _workingOnClauses = false;
+            }
         }
     }
 

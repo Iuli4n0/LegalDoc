@@ -3,6 +3,7 @@ using System;
 using DocumentService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace DocumentService.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260425173031_AddDocumentChunksWithPgVector")]
+    partial class AddDocumentChunksWithPgVector
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -130,35 +133,6 @@ namespace DocumentService.Infrastructure.Migrations
                     b.ToTable("DocumentChunks");
                 });
 
-            modelBuilder.Entity("DocumentService.Domain.Entities.DocumentMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("DocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsUser")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SourcesJson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentId");
-
-                    b.ToTable("DocumentMessages");
-                });
-
             modelBuilder.Entity("DocumentService.Domain.Entities.Clause", b =>
                 {
                     b.HasOne("DocumentService.Domain.Entities.Document", "Document")
@@ -171,17 +145,6 @@ namespace DocumentService.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("DocumentService.Domain.Entities.DocumentChunk", b =>
-                {
-                    b.HasOne("DocumentService.Domain.Entities.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Document");
-                });
-
-            modelBuilder.Entity("DocumentService.Domain.Entities.DocumentMessage", b =>
                 {
                     b.HasOne("DocumentService.Domain.Entities.Document", "Document")
                         .WithMany()
