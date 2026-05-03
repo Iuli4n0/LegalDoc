@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
-        <ExcludeByFile>**/DocumentService.API/Program.cs,**/DocumentService.API/obj/**/*.cs,**/DocumentService.Infrastructure/Migrations/*.cs,**/DocumentService.Infrastructure/Persistence/AppDbContextFactory.cs,**/DocumentService.Infrastructure/Services/OllamaResumeService.cs</ExcludeByFile>
+        <ExcludeByFile>**/DocumentService.API/Program.cs,**/DocumentService.API/obj/**/*.cs,**/DocumentService.Infrastructure/Migrations/*.cs,**/DocumentService.Infrastructure/Persistence/AppDbContextFactory.cs,**/DocumentService.Infrastructure/Services/*.cs</ExcludeByFile>
     </PropertyGroup>
 
     <ItemGroup>

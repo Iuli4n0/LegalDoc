@@ -43,7 +43,7 @@ public class AppDbContextTests
 /// Test-specific DbContext that ignores the pgvector Embedding property
 /// which is not supported by the InMemory provider.
 /// </summary>
-internal class TestAppDbContext : AppDbContext
+public class TestAppDbContext : AppDbContext
 {
     public TestAppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

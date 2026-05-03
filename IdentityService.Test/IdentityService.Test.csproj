@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
-        <ExcludeByFile>**/IdentityService.API/Program.cs,**/IdentityService.API/obj/**/*.cs,**/IdentityService.Infrastructure/Migrations/*.cs,**/IdentityService.Infrastructure/Persistence/IdentityDbContextFactory.cs,**/*.Designer.cs</ExcludeByFile>
+        <ExcludeByFile>**/IdentityService.API/Program.cs,**/IdentityService.API/obj/**/*.cs,**/IdentityService.Infrastructure/Migrations/*.cs,**/IdentityService.Infrastructure/Persistence/IdentityDbContextFactory.cs,**/*.Designer.cs,**/IdentityService.Infrastructure/Services/*.cs,**/IdentityService.API/Controllers/StripeWebhookController.cs</ExcludeByFile>
     </PropertyGroup>
 
     <ItemGroup>
