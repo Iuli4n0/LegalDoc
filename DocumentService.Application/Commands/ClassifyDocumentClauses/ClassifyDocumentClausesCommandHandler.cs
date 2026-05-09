@@ -54,10 +54,13 @@ public class ClassifyDocumentClausesCommandHandler
         await _clauseRepository.UpdateRangeAsync(clauses, cancellationToken).ConfigureAwait(false);
 
         var classifiedAt = DateTime.UtcNow;
-        _logger.LogInformation(
-            "Clause classification completed for document {DocumentId}. Clauses classified: {ClauseCount}",
-            request.DocumentId,
-            clauses.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Clause classification completed for document {DocumentId}. Clauses classified: {ClauseCount}",
+                request.DocumentId,
+                clauses.Count);
+        }
 
         return new ClassifyDocumentClausesResponse(
             request.DocumentId,
@@ -70,4 +73,3 @@ public class ClassifyDocumentClausesCommandHandler
             classifiedAt);
     }
 }
-

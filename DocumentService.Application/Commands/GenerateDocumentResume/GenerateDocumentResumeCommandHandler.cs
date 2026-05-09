@@ -35,7 +35,10 @@ public class GenerateDocumentResumeCommandHandler
     public async Task<GenerateDocumentResumeResponse> Handle(
         GenerateDocumentResumeCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting resume generation for document {DocumentId}", request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Starting resume generation for document {DocumentId}", request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -62,9 +65,12 @@ public class GenerateDocumentResumeCommandHandler
         document.SetResume(resumeResult.Resume);
         await _documentRepository.UpdateAsync(document).ConfigureAwait(false);
 
-        _logger.LogInformation(
-            "Resume generation completed for document {DocumentId}. Characters extracted: {CharCount}, Chunks processed: {ChunksProcessed}",
-            request.DocumentId, extractedText.Length, resumeResult.ChunksProcessed);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Resume generation completed for document {DocumentId}. Characters extracted: {CharCount}, Chunks processed: {ChunksProcessed}",
+                request.DocumentId, extractedText.Length, resumeResult.ChunksProcessed);
+        }
 
         return new GenerateDocumentResumeResponse(
             document.Id,
@@ -74,4 +80,3 @@ public class GenerateDocumentResumeCommandHandler
         );
     }
 }
-

@@ -8,6 +8,7 @@ namespace DocumentService.Test.Commands;
 
 public class IndexDocumentCommandHandlerTests
 {
+    private static readonly float[] ChunkEmbedding = [0.1f, 0.2f, 0.3f];
     private readonly Mock<IDocumentRepository> _docRepo = new();
     private readonly Mock<IFileStorageService> _fileStorage = new();
     private readonly Mock<ITextExtractionService> _textExtraction = new();
@@ -63,7 +64,7 @@ public class IndexDocumentCommandHandlerTests
         _fileStorage.Setup(s => s.DownloadFileAsync(It.IsAny<string>())).ReturnsAsync(new MemoryStream());
         _textExtraction.Setup(s => s.ExtractTextAsync(It.IsAny<Stream>(), It.IsAny<string>())).ReturnsAsync("Short text.");
         _embedding.Setup(s => s.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new float[] { 0.1f, 0.2f, 0.3f });
+            .ReturnsAsync(ChunkEmbedding);
         _chunkRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<DocumentChunk>>())).Returns(Task.CompletedTask);
 
         var result = await _handler.Handle(new IndexDocumentCommand(doc.Id), CancellationToken.None);

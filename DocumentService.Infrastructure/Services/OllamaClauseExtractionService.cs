@@ -39,7 +39,10 @@ public class OllamaClauseExtractionService : IClauseExtractorService
 
         _ollamaClient = new OllamaApiClient(httpClient);
 
-        _logger.LogInformation("OllamaClauseExtractionService initialized. Endpoint: {Endpoint}, Model: {Model}", endpoint, _model);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("OllamaClauseExtractionService initialized. Endpoint: {Endpoint}, Model: {Model}", endpoint, _model);
+        }
     }
 
     public async Task<ClauseExtractionResult> ExtractClausesAsync(string text, CancellationToken cancellationToken = default)
@@ -48,13 +51,19 @@ public class OllamaClauseExtractionService : IClauseExtractorService
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 
         var chunks = SplitIntoChunks(text, _chunkSize);
-        _logger.LogInformation("Text split into {ChunkCount} chunk(s).", chunks.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Text split into {ChunkCount} chunk(s).", chunks.Count);
+        }
 
         var allClauses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < chunks.Count; i++)
         {
-            _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
+            }
             var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken).ConfigureAwait(false);
             var parsedClauses = ParseClauses(rawResponse);
 

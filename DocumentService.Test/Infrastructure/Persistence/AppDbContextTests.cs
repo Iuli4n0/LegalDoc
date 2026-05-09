@@ -22,10 +22,10 @@ public class AppDbContextTests
         Assert.NotNull(entity.FindIndex(entity.FindProperty(nameof(Document.UserId))!));
 
         var doc = Document.Create("x.pdf", "application/pdf", "k", 1, "user-1");
-        await context.Documents.AddAsync(doc).ConfigureAwait(false);
-        await context.SaveChangesAsync().ConfigureAwait(false);
+        await context.Documents.AddAsync(doc);
+        await context.SaveChangesAsync();
 
-        var loaded = await context.Documents.SingleAsync().ConfigureAwait(false);
+        var loaded = await context.Documents.SingleAsync();
         Assert.Equal(doc.Id, loaded.Id);
     }
 
