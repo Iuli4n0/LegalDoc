@@ -28,14 +28,22 @@ builder.Services.AddScoped<ApiClient>();
 // HttpClient for IdentityService (no auth header needed for login/register)
 builder.Services.AddHttpClient("IdentityAPI", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["IdentityServiceUrl"] ?? "http://localhost:5164");
+    var identityUrl = builder.Configuration["IdentityServiceUrl"];
+    if (string.IsNullOrWhiteSpace(identityUrl))
+        throw new InvalidOperationException("IdentityServiceUrl missing in config");
+
+    client.BaseAddress = new Uri(identityUrl);
     client.Timeout = TimeSpan.FromSeconds(identityTimeoutSeconds);
 });
 
 // HttpClient for DocumentService (auth header set by ApiClient at call time)
 builder.Services.AddHttpClient("API", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["DocumentServiceUrl"] ?? "http://localhost:5163");
+    var apiUrl = builder.Configuration["DocumentServiceUrl"];
+    if (string.IsNullOrWhiteSpace(apiUrl))
+        throw new InvalidOperationException("DocumentServiceUrl missing in config");
+
+    client.BaseAddress = new Uri(apiUrl);
     client.Timeout = TimeSpan.FromSeconds(apiTimeoutSeconds);
 });
 
@@ -91,7 +99,7 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(false);
 
 static string NormalizePathBase(string? pathBase)
 {

@@ -17,12 +17,12 @@ public class UpdateUserLimitsCommandHandler : IRequestHandler<UpdateUserLimitsCo
 
     public async Task Handle(UpdateUserLimitsCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId).ConfigureAwait(false);
 
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
 
         user.UpdateLimits(request.MaxDocuments, request.MaxDocumentSizeMb);
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
     }
 }

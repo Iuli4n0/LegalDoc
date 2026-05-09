@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-public record UploadDocumentResponse(
+internal record UploadDocumentResponse(
     Guid Id,
     string UserId,
     string FileName,

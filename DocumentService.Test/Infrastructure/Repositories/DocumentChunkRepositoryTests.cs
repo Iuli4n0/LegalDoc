@@ -24,13 +24,13 @@ public class DocumentChunkRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentChunkRepository(ctx, new Mock<ILogger<DocumentChunkRepository>>().Object);
         var chunk = DocumentChunk.Create(doc.Id, 0, "text", new float[] { 0.1f });
         await repo.AddRangeAsync([chunk]);
 
-        Assert.Equal(1, await ctx.DocumentChunks.CountAsync());
+        Assert.Equal(1, await ctx.DocumentChunks.CountAsync().ConfigureAwait(false));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class DocumentChunkRepositoryTests
         ctx.Documents.Add(doc);
         var chunk = DocumentChunk.Create(doc.Id, 0, "text", new float[] { 0.1f });
         ctx.DocumentChunks.Add(chunk);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentChunkRepository(ctx, new Mock<ILogger<DocumentChunkRepository>>().Object);
         Assert.True(await repo.IsDocumentIndexedAsync(doc.Id));
@@ -62,11 +62,11 @@ public class DocumentChunkRepositoryTests
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
         ctx.DocumentChunks.Add(DocumentChunk.Create(doc.Id, 0, "t", new float[] { 0.1f }));
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentChunkRepository(ctx, new Mock<ILogger<DocumentChunkRepository>>().Object);
         await repo.DeleteByDocumentIdAsync(doc.Id);
-        Assert.Equal(0, await ctx.DocumentChunks.CountAsync());
+        Assert.Equal(0, await ctx.DocumentChunks.CountAsync().ConfigureAwait(false));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class DocumentChunkRepositoryTests
         await using var ctx = CreateContext();
         var repo = new DocumentChunkRepository(ctx, new Mock<ILogger<DocumentChunkRepository>>().Object);
         await repo.DeleteByDocumentIdAsync(Guid.NewGuid());
-        Assert.Equal(0, await ctx.DocumentChunks.CountAsync());
+        Assert.Equal(0, await ctx.DocumentChunks.CountAsync().ConfigureAwait(false));
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class DocumentChunkRepositoryTests
         ctx.Documents.Add(doc);
         ctx.DocumentChunks.Add(DocumentChunk.Create(doc.Id, 0, "t1", new float[] { 0.1f }));
         ctx.DocumentChunks.Add(DocumentChunk.Create(doc.Id, 1, "t2", new float[] { 0.2f }));
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentChunkRepository(ctx, new Mock<ILogger<DocumentChunkRepository>>().Object);
         Assert.Equal(2, await repo.CountByDocumentIdAsync(doc.Id));

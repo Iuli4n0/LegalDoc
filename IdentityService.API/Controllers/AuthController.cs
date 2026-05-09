@@ -20,10 +20,10 @@ namespace IdentityService.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+internal class AuthController : ControllerBase
 {
     private const int InternalServerErrorStatusCode = 500;
-    
+
     private readonly IMediator _mediator;
     private readonly IUserRepository _userRepository;
 
@@ -45,7 +45,7 @@ public class AuthController : ControllerBase
                 FullName = request.FullName
             };
 
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
@@ -69,7 +69,7 @@ public class AuthController : ControllerBase
                 Password = request.Password
             };
 
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (UnauthorizedAccessException)
@@ -86,7 +86,7 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<GetUserByIdResponse>> GetCurrentUser()
     {
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                           ?? User.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -95,7 +95,7 @@ public class AuthController : ControllerBase
         }
 
         var query = new GetUserByIdQuery(userId);
-        var response = await _mediator.Send(query);
+        var response = await _mediator.Send(query).ConfigureAwait(false);
 
         if (response is null)
             return NotFound();
@@ -108,7 +108,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<GetUserByIdResponse>> GetUser(Guid id)
     {
         var query = new GetUserByIdQuery(id);
-        var response = await _mediator.Send(query);
+        var response = await _mediator.Send(query).ConfigureAwait(false);
 
         if (response is null)
             return NotFound();
@@ -134,7 +134,7 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = "Invalid plan. Choose Bronze, Silver, or Gold." });
 
             var command = new CreateCheckoutSessionCommand(userId, plan);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (KeyNotFoundException ex)
@@ -164,7 +164,7 @@ public class AuthController : ControllerBase
                 return Unauthorized();
 
             var command = new CreatePortalSessionCommand(userId);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (KeyNotFoundException ex)
@@ -190,7 +190,7 @@ public class AuthController : ControllerBase
         try
         {
             var query = new GetAllUsersQuery();
-            var response = await _mediator.Send(query);
+            var response = await _mediator.Send(query).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -206,7 +206,7 @@ public class AuthController : ControllerBase
         try
         {
             var command = new UpdateUserLimitsCommand(id, request.MaxDocuments, request.MaxDocumentSizeMb);
-            await _mediator.Send(command);
+            await _mediator.Send(command).ConfigureAwait(false);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
@@ -230,7 +230,7 @@ public class AuthController : ControllerBase
         try
         {
             var query = new CheckUserLimitsQuery(id);
-            var response = await _mediator.Send(query);
+            var response = await _mediator.Send(query).ConfigureAwait(false);
             return Ok(response);
         }
         catch (KeyNotFoundException ex)
@@ -250,7 +250,7 @@ public class AuthController : ControllerBase
         try
         {
             var command = new IncrementDocumentCountCommand(id);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (KeyNotFoundException ex)
@@ -278,29 +278,20 @@ public class AuthController : ControllerBase
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId).ConfigureAwait(false);
             if (user is null)
                 return NotFound(new { message = $"User {userId} not found." });
 
             var sessionService = new SessionService();
-            var session = await sessionService.GetAsync(request.SessionId);
+            var session = await sessionService.GetAsync(request.SessionId).ConfigureAwait(false);
             if (session is null)
                 return NotFound(new { message = "Stripe checkout session not found." });
 
-            var sessionUserId = session.Metadata?.GetValueOrDefault("userId");
+            var validationResult = ValidateSessionForUser(session, user, userId);
+            if (validationResult is not null)
+                return validationResult;
+
             var sessionPlan = session.Metadata?.GetValueOrDefault("plan");
-
-            var sameUserByMetadata = Guid.TryParse(sessionUserId, out var sessionUserGuid) && sessionUserGuid == userId;
-            var sameUserByCustomerId = !string.IsNullOrEmpty(user.StripeCustomerId)
-                                       && !string.IsNullOrEmpty(session.CustomerId)
-                                       && string.Equals(user.StripeCustomerId, session.CustomerId, StringComparison.Ordinal);
-
-            if (!sameUserByMetadata && !sameUserByCustomerId)
-                return Forbid();
-
-            if (!string.Equals(session.Status, "complete", StringComparison.OrdinalIgnoreCase))
-                return BadRequest(new { message = "Checkout session is not complete yet." });
-
             if (!Enum.TryParse<SubscriptionPlan>(sessionPlan, true, out var plan) || plan == SubscriptionPlan.Free)
                 return BadRequest(new { message = "Could not determine purchased plan from Stripe session metadata." });
 
@@ -317,7 +308,7 @@ public class AuthController : ControllerBase
             user.UpdateSubscription(plan, session.SubscriptionId);
             user.ResetMonthlyCounter();
 
-            await _userRepository.UpdateAsync(user);
+            await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(previousSubscriptionId)
                 && !string.IsNullOrWhiteSpace(session.SubscriptionId)
@@ -328,7 +319,7 @@ public class AuthController : ControllerBase
                 {
                     Prorate = false,
                     InvoiceNow = false
-                });
+                }).ConfigureAwait(false);
             }
 
             return Ok(new SyncCheckoutSessionResponse(
@@ -347,15 +338,33 @@ public class AuthController : ControllerBase
             return StatusCode(InternalServerErrorStatusCode, new { message = $"Failed to sync checkout session: {ex.Message}" });
         }
     }
+
+    private ActionResult? ValidateSessionForUser(Session session, User user, Guid userId)
+    {
+        var sessionUserId = session.Metadata?.GetValueOrDefault("userId");
+        
+        var sameUserByMetadata = Guid.TryParse(sessionUserId, out var sessionUserGuid) && sessionUserGuid == userId;
+        var sameUserByCustomerId = !string.IsNullOrEmpty(user.StripeCustomerId)
+                                   && !string.IsNullOrEmpty(session.CustomerId)
+                                   && string.Equals(user.StripeCustomerId, session.CustomerId, StringComparison.Ordinal);
+
+        if (!sameUserByMetadata && !sameUserByCustomerId)
+            return Forbid();
+
+        if (!string.Equals(session.Status, "complete", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Checkout session is not complete yet." });
+
+        return null;
+    }
 }
 
 // Request DTOs
-public record RegisterRequest(string Email, string Password, string FullName);
-public record LoginRequest(string Email, string Password);
-public record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);
-public record CreateCheckoutRequest(string Plan);
-public record SyncCheckoutSessionRequest(string SessionId);
-public record SyncCheckoutSessionResponse(
+internal record RegisterRequest(string Email, string Password, string FullName);
+internal record LoginRequest(string Email, string Password);
+internal record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);
+internal record CreateCheckoutRequest(string Plan);
+internal record SyncCheckoutSessionRequest(string SessionId);
+internal record SyncCheckoutSessionResponse(
     string SubscriptionPlan,
     int MaxDocuments,
     int MaxDocumentSizeMb,

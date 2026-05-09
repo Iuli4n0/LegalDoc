@@ -17,13 +17,13 @@ public class IncrementDocumentCountCommandHandler : IRequestHandler<IncrementDoc
 
     public async Task<IncrementDocumentCountResponse> Handle(IncrementDocumentCountCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId).ConfigureAwait(false);
 
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
 
         user.IncrementDocumentCount();
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
         return new IncrementDocumentCountResponse(
             user.TotalDocumentsUploaded,

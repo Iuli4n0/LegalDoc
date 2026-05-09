@@ -41,7 +41,7 @@ public class TextExtractionService : ITextExtractionService
         {
             "application/pdf" => ExtractFromPdf(fileStream),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ExtractFromDocx(fileStream),
-            "text/plain" => await ExtractFromTxt(fileStream),
+            "text/plain" => await ExtractFromTxt(fileStream).ConfigureAwait(false),
             _ => throw new NotSupportedException($"Content type '{contentType}' is not supported for text extraction.")
         };
 
@@ -59,7 +59,7 @@ public class TextExtractionService : ITextExtractionService
             {
                 var words = page.GetWords().Select(w => w.Text);
                 var pageText = string.Join(" ", words);
-                
+
                 sb.AppendLine(pageText);
             }
 
@@ -85,22 +85,22 @@ public class TextExtractionService : ITextExtractionService
                 return string.Empty;
 
             var sb = new StringBuilder();
-            
-            foreach (var element in body.Descendants())
+
+            foreach (var element in body.Descendants<Paragraph>())
             {
-                if (element is Paragraph)
+                foreach (var textNode in element.Descendants().OfType<Text>())
                 {
-                    foreach (var child in element.Descendants())
-                    {
-                        if (child is Text textNode)
-                            sb.Append(textNode.Text);
-                        else if (child is Break)
-                            sb.AppendLine();
-                        else if (child is TabChar)
-                            sb.Append('\t');
-                    }
-                    sb.AppendLine(); 
+                    sb.Append(textNode.Text);
                 }
+                foreach (var _ in element.Descendants().OfType<Break>())
+                {
+                    sb.AppendLine();
+                }
+                foreach (var _ in element.Descendants().OfType<TabChar>())
+                {
+                    sb.Append('\t');
+                }
+                sb.AppendLine();
             }
 
             var text = sb.ToString();
@@ -117,19 +117,19 @@ public class TextExtractionService : ITextExtractionService
     private static async Task<string> ExtractFromTxt(Stream fileStream)
     {
         using var reader = new StreamReader(fileStream, Encoding.UTF8, leaveOpen: true);
-        return await reader.ReadToEndAsync();
+        return await reader.ReadToEndAsync().ConfigureAwait(false);
     }
 
-   
+
     private static string CleanAndNormalizeText(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
 
-       
+
         var text = Regex.Replace(input, @"(\w+)[-‐‑]\s*[\r\n]+\s*(\w+)", "$1$2");
-        
+
         text = Regex.Replace(text, @"[^\S\r\n]+", " ");
-        
+
         text = Regex.Replace(text, @"(\r?\n){3,}", "\n\n");
 
         return text.Trim();

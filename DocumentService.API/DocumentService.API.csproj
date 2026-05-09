@@ -20,4 +20,8 @@
         <ProjectReference Include="..\DocumentService.Infrastructure\DocumentService.Infrastructure.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="DocumentService.Test" />
+    </ItemGroup>
+
 </Project>

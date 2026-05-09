@@ -5,13 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.GenerateDocumentResume;
 
-public class GenerateDocumentResumeCommandHandler 
+public class GenerateDocumentResumeCommandHandler
     : IRequestHandler<GenerateDocumentResumeCommand, GenerateDocumentResumeResponse>
 {
     private const string DocumentNotFoundError = "Document with ID '{0}' not found.";
     private const string UnsupportedContentTypeError = "Content type '{0}' is not supported for resume generation. Supported types: PDF, DOCX, TXT.";
     private const string NoTextExtractedError = "No text could be extracted from the document.";
-    
+
     private readonly IDocumentRepository _documentRepository;
     private readonly IFileStorageService _fileStorageService;
     private readonly ITextExtractionService _textExtractionService;
@@ -37,7 +37,7 @@ public class GenerateDocumentResumeCommandHandler
     {
         _logger.LogInformation("Starting resume generation for document {DocumentId}", request.DocumentId);
 
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
         {
             throw new InvalidOperationException(string.Format(DocumentNotFoundError, request.DocumentId));
@@ -49,18 +49,18 @@ public class GenerateDocumentResumeCommandHandler
                 string.Format(UnsupportedContentTypeError, document.ContentType));
         }
 
-        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key);
-        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType);
+        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key).ConfigureAwait(false);
+        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(extractedText))
         {
             throw new InvalidOperationException(NoTextExtractedError);
         }
 
-        var resumeResult = await _resumeGeneratorService.GenerateResumeAsync(extractedText, cancellationToken);
+        var resumeResult = await _resumeGeneratorService.GenerateResumeAsync(extractedText, cancellationToken).ConfigureAwait(false);
 
         document.SetResume(resumeResult.Resume);
-        await _documentRepository.UpdateAsync(document);
+        await _documentRepository.UpdateAsync(document).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Resume generation completed for document {DocumentId}. Characters extracted: {CharCount}, Chunks processed: {ChunksProcessed}",

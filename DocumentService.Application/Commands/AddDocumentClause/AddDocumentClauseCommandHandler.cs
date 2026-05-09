@@ -20,7 +20,7 @@ public class AddDocumentClauseCommandHandler : IRequestHandler<AddDocumentClause
 
     public async Task<AddDocumentClauseResponse> Handle(AddDocumentClauseCommand request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
             throw new InvalidOperationException("Document not found.");
 
@@ -28,7 +28,7 @@ public class AddDocumentClauseCommandHandler : IRequestHandler<AddDocumentClause
             throw new InvalidOperationException("Document not found.");
 
         var clause = Clause.Create(request.DocumentId, request.Text);
-        await _clauseRepository.AddAsync(clause);
+        await _clauseRepository.AddAsync(clause).ConfigureAwait(false);
 
         return new AddDocumentClauseResponse(
             clause.Id,

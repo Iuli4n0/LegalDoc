@@ -16,7 +16,7 @@ public class S3FileStorageService : IFileStorageService
     private readonly ILogger<S3FileStorageService> _logger;
 
     public S3FileStorageService(
-        IAmazonS3 s3Client, 
+        IAmazonS3 s3Client,
         IConfiguration configuration,
         ILogger<S3FileStorageService> logger)
     {
@@ -24,7 +24,7 @@ public class S3FileStorageService : IFileStorageService
         _logger = logger;
         _bucketName = configuration["AWS:BucketName"]
                       ?? throw new InvalidOperationException("AWS:BucketName is not configured.");
-        
+
         _logger.LogInformation("S3FileStorageService initialized with bucket: {BucketName}", _bucketName);
     }
 
@@ -44,22 +44,22 @@ public class S3FileStorageService : IFileStorageService
                 ContentType = contentType
             };
 
-            var response = await _s3Client.PutObjectAsync(request);
+            var response = await _s3Client.PutObjectAsync(request).ConfigureAwait(false);
 
             _logger.LogInformation(
-                "Successfully uploaded file {FileName} to S3. Key: {Key}, ETag: {ETag}", 
-                fileName, 
-                key, 
+                "Successfully uploaded file {FileName} to S3. Key: {Key}, ETag: {ETag}",
+                fileName,
+                key,
                 response.ETag);
 
             return key;
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, 
-                "AWS S3 error uploading file {FileName}. Error Code: {ErrorCode}, Message: {Message}", 
-                fileName, 
-                ex.ErrorCode, 
+            _logger.LogError(ex,
+                "AWS S3 error uploading file {FileName}. Error Code: {ErrorCode}, Message: {Message}",
+                fileName,
+                ex.ErrorCode,
                 ex.Message);
             throw new InvalidOperationException($"Failed to upload file to S3: {ex.Message}", ex);
         }
@@ -82,12 +82,12 @@ public class S3FileStorageService : IFileStorageService
                 Key = s3Key
             };
 
-            var response = await _s3Client.GetObjectAsync(request);
+            var response = await _s3Client.GetObjectAsync(request).ConfigureAwait(false);
 
             var memoryStream = new MemoryStream();
             await using (response.ResponseStream)
             {
-                await response.ResponseStream.CopyToAsync(memoryStream);
+                await response.ResponseStream.CopyToAsync(memoryStream).ConfigureAwait(false);
             }
             memoryStream.Position = 0;
 
@@ -119,7 +119,7 @@ public class S3FileStorageService : IFileStorageService
                 Key = s3Key
             };
 
-            await _s3Client.DeleteObjectAsync(request);
+            await _s3Client.DeleteObjectAsync(request).ConfigureAwait(false);
 
             _logger.LogInformation("Successfully deleted file from S3. Key: {Key}", s3Key);
         }

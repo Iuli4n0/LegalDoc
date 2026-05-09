@@ -20,11 +20,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Map flat .env variables to ASP.NET configuration hierarchy
 var envMappings = new Dictionary<string, string?>
 {
-    ["Stripe:SecretKey"]      = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
-    ["Stripe:WebhookSecret"]  = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET"),
-    ["Stripe:Prices:Bronze"]  = Environment.GetEnvironmentVariable("STRIPE_PRICE_BRONZE"),
-    ["Stripe:Prices:Silver"]  = Environment.GetEnvironmentVariable("STRIPE_PRICE_SILVER"),
-    ["Stripe:Prices:Gold"]    = Environment.GetEnvironmentVariable("STRIPE_PRICE_GOLD"),
+    ["Stripe:SecretKey"] = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
+    ["Stripe:WebhookSecret"] = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET"),
+    ["Stripe:Prices:Bronze"] = Environment.GetEnvironmentVariable("STRIPE_PRICE_BRONZE"),
+    ["Stripe:Prices:Silver"] = Environment.GetEnvironmentVariable("STRIPE_PRICE_SILVER"),
+    ["Stripe:Prices:Gold"] = Environment.GetEnvironmentVariable("STRIPE_PRICE_GOLD"),
 };
 
 // Only add non-null values so appsettings defaults aren't overwritten with nulls
@@ -59,7 +59,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // MediatR
-builder.Services.AddMediatR(cfg => 
+builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(IUserRepository).Assembly));
 
 // EF Core - PostgreSQL (Separate database for Identity)
@@ -114,7 +114,7 @@ var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    await db.Database.MigrateAsync();
+    await db.Database.MigrateAsync().ConfigureAwait(false);
 }
 
 if (app.Environment.IsDevelopment())
@@ -137,4 +137,4 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(false);

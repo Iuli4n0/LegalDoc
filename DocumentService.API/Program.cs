@@ -36,7 +36,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // MediatR
-builder.Services.AddMediatR(cfg => 
+builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(IDocumentRepository).Assembly));
 
 // AWS S3 Configuration
@@ -71,7 +71,7 @@ builder.Services.AddScoped<IDocumentMessageRepository, DocumentMessageRepository
 
 builder.Services.AddHttpClient<IClauseExtractorService, OllamaClauseExtractionService>(client =>
 {
-    client.Timeout = TimeSpan.FromMinutes(10); 
+    client.Timeout = TimeSpan.FromMinutes(10);
 });
 builder.Services.AddHttpClient<IClauseClassificationService, ClauseClassificationService>((_, client) =>
 {
@@ -125,7 +125,7 @@ var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    await db.Database.MigrateAsync().ConfigureAwait(false);
 }
 
 if (app.Environment.IsDevelopment())
@@ -148,4 +148,4 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(false);

@@ -31,10 +31,10 @@ public class User
     // ── Plan limits mapping ────────────────────────────────
     private static (int maxDocs, int maxSizeMb) GetPlanLimits(SubscriptionPlan plan) => plan switch
     {
-        SubscriptionPlan.Free   => (1, 1),
+        SubscriptionPlan.Free => (1, 1),
         SubscriptionPlan.Bronze => (5, 1),
         SubscriptionPlan.Silver => (25, 3),
-        SubscriptionPlan.Gold   => (100, 10),
+        SubscriptionPlan.Gold => (100, 10),
         _ => (1, 1)
     };
 
@@ -42,13 +42,13 @@ public class User
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty.", nameof(email));
-        
+
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new ArgumentException("Password hash cannot be empty.", nameof(passwordHash));
-        
+
         if (string.IsNullOrWhiteSpace(fullName))
             throw new ArgumentException("Full name cannot be empty.", nameof(fullName));
-        
+
         var (maxDocs, maxSizeMb) = GetPlanLimits(SubscriptionPlan.Free);
 
         return new User

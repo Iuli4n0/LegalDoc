@@ -20,14 +20,14 @@ public class DocumentMessageRepository : IDocumentMessageRepository
 
     public async Task AddAsync(DocumentMessage message)
     {
-        await _context.DocumentMessages.AddAsync(message);
-        await _context.SaveChangesAsync();
+        await _context.DocumentMessages.AddAsync(message).ConfigureAwait(false);
+        await _context.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task AddRangeAsync(IEnumerable<DocumentMessage> messages)
     {
-        await _context.DocumentMessages.AddRangeAsync(messages);
-        await _context.SaveChangesAsync();
+        await _context.DocumentMessages.AddRangeAsync(messages).ConfigureAwait(false);
+        await _context.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<List<DocumentMessage>> GetByDocumentIdAsync(Guid documentId)
@@ -35,6 +35,6 @@ public class DocumentMessageRepository : IDocumentMessageRepository
         return await _context.DocumentMessages
             .Where(m => m.DocumentId == documentId)
             .OrderBy(m => m.CreatedAt)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 }

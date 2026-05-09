@@ -16,8 +16,8 @@ public class GetDocumentQueryHandler : IRequestHandler<GetDocumentQuery, GetDocu
 
     public async Task<GetDocumentResponse?> Handle(GetDocumentQuery request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.Id);
-        
+        var document = await _documentRepository.GetByIdAsync(request.Id).ConfigureAwait(false);
+
         if (document is null)
             return null;
 

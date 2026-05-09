@@ -19,7 +19,7 @@ public class CreatePortalSessionCommandHandler : IRequestHandler<CreatePortalSes
 
     public async Task<CreatePortalSessionResponse> Handle(CreatePortalSessionCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId).ConfigureAwait(false);
 
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
@@ -27,7 +27,7 @@ public class CreatePortalSessionCommandHandler : IRequestHandler<CreatePortalSes
         if (string.IsNullOrEmpty(user.StripeCustomerId))
             throw new InvalidOperationException("User does not have a Stripe customer account. Please subscribe to a plan first.");
 
-        var portalUrl = await _stripeService.CreateCustomerPortalSessionAsync(user.StripeCustomerId);
+        var portalUrl = await _stripeService.CreateCustomerPortalSessionAsync(user.StripeCustomerId).ConfigureAwait(false);
 
         return new CreatePortalSessionResponse(portalUrl);
     }

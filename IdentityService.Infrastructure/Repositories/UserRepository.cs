@@ -19,35 +19,35 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByIdAsync(Guid id)
     {
-        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id).ConfigureAwait(false);
     }
 
     public async Task<User?> GetByEmailAsync(string email)
     {
         var normalizedEmail = email.ToLowerInvariant();
-        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail).ConfigureAwait(false);
     }
 
     public async Task AddAsync(User user)
     {
-        await _dbContext.Users.AddAsync(user);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.Users.AddAsync(user).ConfigureAwait(false);
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task UpdateAsync(User user)
     {
         _dbContext.Users.Update(user);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<bool> ExistsAsync(string email)
     {
         var normalizedEmail = email.ToLowerInvariant();
-        return await _dbContext.Users.AnyAsync(u => u.Email == normalizedEmail);
+        return await _dbContext.Users.AnyAsync(u => u.Email == normalizedEmail).ConfigureAwait(false);
     }
 
     public async Task<IEnumerable<User>> GetAllAsync()
     {
-        return await _dbContext.Users.OrderBy(u => u.CreatedAt).ToListAsync();
+        return await _dbContext.Users.OrderBy(u => u.CreatedAt).ToListAsync().ConfigureAwait(false);
     }
 }

@@ -28,11 +28,11 @@ public class GetDocumentConversationQueryHandler : IRequestHandler<GetDocumentCo
     {
         _logger.LogInformation("Retrieving conversation for document {DocumentId}", request.DocumentId);
 
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
             throw new InvalidOperationException($"Document with ID '{request.DocumentId}' not found.");
 
-        var messages = await _messageRepository.GetByDocumentIdAsync(request.DocumentId);
+        var messages = await _messageRepository.GetByDocumentIdAsync(request.DocumentId).ConfigureAwait(false);
 
         var dtos = messages.Select(m => new DocumentMessageDto(
             m.Id,

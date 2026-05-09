@@ -42,7 +42,7 @@ public class GenerateDocumentClausesCommandHandler
     {
         _logger.LogInformation("Starting clause extraction for document {DocumentId}", request.DocumentId);
 
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
         {
             throw new InvalidOperationException(string.Format(DocumentNotFoundError, request.DocumentId));
@@ -54,15 +54,15 @@ public class GenerateDocumentClausesCommandHandler
                 string.Format(UnsupportedContentTypeError, document.ContentType));
         }
 
-        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key);
-        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType);
+        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key).ConfigureAwait(false);
+        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(extractedText))
         {
             throw new InvalidOperationException(NoTextExtractedError);
         }
 
-        var extractionResult = await _clauseExtractorService.ExtractClausesAsync(extractedText, cancellationToken);
+        var extractionResult = await _clauseExtractorService.ExtractClausesAsync(extractedText, cancellationToken).ConfigureAwait(false);
         if (extractionResult.Clauses.Count == 0)
         {
             throw new InvalidOperationException(NoClausesExtractedError);
@@ -72,7 +72,7 @@ public class GenerateDocumentClausesCommandHandler
             .Select(text => Clause.Create(document.Id, text))
             .ToList();
 
-        await _clauseRepository.ReplaceForDocumentAsync(document.Id, clausesToSave, cancellationToken);
+        await _clauseRepository.ReplaceForDocumentAsync(document.Id, clausesToSave, cancellationToken).ConfigureAwait(false);
 
         var generatedAt = DateTime.UtcNow;
 

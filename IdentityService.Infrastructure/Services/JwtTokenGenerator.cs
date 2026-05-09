@@ -14,7 +14,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     private const int DefaultExpirationMinutes = 1440; // 24 hours
     private const string DefaultIssuer = "LegalDoc";
     private const string DefaultAudience = "LegalDoc";
-    
+
     private readonly IConfiguration _configuration;
 
     public JwtTokenGenerator(IConfiguration configuration)
@@ -25,12 +25,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public string GenerateToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+        var keyStr = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key not configured");
         var issuer = jwtSettings["Issuer"] ?? DefaultIssuer;
         var audience = jwtSettings["Audience"] ?? DefaultAudience;
         var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? DefaultExpirationMinutes.ToString());
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]

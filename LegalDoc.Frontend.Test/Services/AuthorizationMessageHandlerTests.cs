@@ -19,7 +19,7 @@ public class AuthorizationMessageHandlerTests
         handler.InnerHandler = innerHandler;
 
         var invoker = new HttpMessageInvoker(handler);
-        return await invoker.SendAsync(request, CancellationToken.None);
+        return await invoker.SendAsync(request, CancellationToken.None).ConfigureAwait(false);
     }
 
     [Fact]

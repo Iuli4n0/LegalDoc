@@ -22,13 +22,13 @@ public class DocumentMessageRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentMessageRepository(ctx);
         var msg = DocumentMessage.Create(doc.Id, true, "Q?");
         await repo.AddAsync(msg);
 
-        Assert.NotNull(await ctx.DocumentMessages.FindAsync(msg.Id));
+        Assert.NotNull(await ctx.DocumentMessages.FindAsync(msg.Id).ConfigureAwait(false));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class DocumentMessageRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentMessageRepository(ctx);
         await repo.AddRangeAsync([
@@ -45,7 +45,7 @@ public class DocumentMessageRepositoryTests
             DocumentMessage.Create(doc.Id, false, "A1")
         ]);
 
-        Assert.Equal(2, await ctx.DocumentMessages.CountAsync());
+        Assert.Equal(2, await ctx.DocumentMessages.CountAsync().ConfigureAwait(false));
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class DocumentMessageRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new DocumentMessageRepository(ctx);
         await repo.AddAsync(DocumentMessage.Create(doc.Id, true, "Q1"));

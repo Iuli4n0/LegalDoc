@@ -33,13 +33,13 @@ public class ClassifyDocumentClausesCommandHandler
 
     public async Task<ClassifyDocumentClausesResponse> Handle(ClassifyDocumentClausesCommand request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
         {
             throw new InvalidOperationException(string.Format(DocumentNotFoundError, request.DocumentId));
         }
 
-        var clauses = await _clauseRepository.GetByDocumentIdAsync(request.DocumentId);
+        var clauses = await _clauseRepository.GetByDocumentIdAsync(request.DocumentId).ConfigureAwait(false);
         if (clauses.Count == 0)
         {
             throw new InvalidOperationException(NoClausesAvailableError);
@@ -47,11 +47,11 @@ public class ClassifyDocumentClausesCommandHandler
 
         foreach (var clause in clauses)
         {
-            var result = await _clauseClassificationService.ClassifyAsync(clause.Text, cancellationToken);
+            var result = await _clauseClassificationService.ClassifyAsync(clause.Text, cancellationToken).ConfigureAwait(false);
             clause.SetClassification(result.Label == 1, result.AbusiveProbability);
         }
 
-        await _clauseRepository.UpdateRangeAsync(clauses, cancellationToken);
+        await _clauseRepository.UpdateRangeAsync(clauses, cancellationToken).ConfigureAwait(false);
 
         var classifiedAt = DateTime.UtcNow;
         _logger.LogInformation(

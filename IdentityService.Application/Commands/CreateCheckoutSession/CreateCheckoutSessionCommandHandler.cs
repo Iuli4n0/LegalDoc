@@ -19,7 +19,7 @@ public class CreateCheckoutSessionCommandHandler : IRequestHandler<CreateCheckou
 
     public async Task<CreateCheckoutSessionResponse> Handle(CreateCheckoutSessionCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId).ConfigureAwait(false);
 
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
@@ -31,7 +31,7 @@ public class CreateCheckoutSessionCommandHandler : IRequestHandler<CreateCheckou
             throw new ArgumentException("You can only upgrade to a higher plan than your current one.");
 
         var checkoutUrl = await _stripeService.CreateCheckoutSessionAsync(
-            request.UserId, user.Email, request.Plan);
+            request.UserId, user.Email, request.Plan).ConfigureAwait(false);
 
         return new CreateCheckoutSessionResponse(checkoutUrl);
     }

@@ -19,17 +19,17 @@ public class DeleteDocumentClauseCommandHandler : IRequestHandler<DeleteDocument
 
     public async Task Handle(DeleteDocumentClauseCommand request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
             throw new InvalidOperationException("Document not found.");
 
         if (document.UserId != request.UserId)
             throw new InvalidOperationException("Document not found.");
 
-        var clause = await _clauseRepository.GetByIdAsync(request.ClauseId, cancellationToken);
+        var clause = await _clauseRepository.GetByIdAsync(request.ClauseId, cancellationToken).ConfigureAwait(false);
         if (clause is null || clause.DocumentId != request.DocumentId)
             throw new InvalidOperationException("Clause not found.");
 
-        await _clauseRepository.DeleteAsync(clause, cancellationToken);
+        await _clauseRepository.DeleteAsync(clause, cancellationToken).ConfigureAwait(false);
     }
 }
