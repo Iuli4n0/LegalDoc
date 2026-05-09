@@ -66,7 +66,7 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task Given_InvalidLoginPayload_When_LoginAsync_Then_ShouldThrowException()
+    public async Task Given_InvalidLoginPayload_When_LoginAsync_Then_ShouldThrowInvalidOperationException()
     {
         var client = CreateClient(_ =>
             new HttpResponseMessage(HttpStatusCode.OK)
@@ -77,7 +77,7 @@ public class AuthServiceTests
         _httpClientFactoryMock.Setup(f => f.CreateClient("IdentityAPI")).Returns(client);
         var service = new AuthService(_httpClientFactoryMock.Object, _authStorageMock.Object, _authState);
 
-        var exception = await Assert.ThrowsAsync<Exception>(() =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.LoginAsync(new LoginRequest { Email = "ion@example.com", Password = "secret" }));
 
         Assert.Contains("Răspuns invalid", exception.Message);
@@ -119,7 +119,7 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task Given_InvalidRegisterPayload_When_RegisterAsync_Then_ShouldThrowException()
+    public async Task Given_InvalidRegisterPayload_When_RegisterAsync_Then_ShouldThrowInvalidOperationException()
     {
         var client = CreateClient(_ =>
             new HttpResponseMessage(HttpStatusCode.OK)
@@ -130,7 +130,7 @@ public class AuthServiceTests
         _httpClientFactoryMock.Setup(f => f.CreateClient("IdentityAPI")).Returns(client);
         var service = new AuthService(_httpClientFactoryMock.Object, _authStorageMock.Object, _authState);
 
-        var exception = await Assert.ThrowsAsync<Exception>(() =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.RegisterAsync(new RegisterRequest()));
 
         Assert.Contains("Răspuns invalid", exception.Message);
