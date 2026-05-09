@@ -67,7 +67,7 @@ jobs:
             /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,**/wwwroot/**"
 
       - name: Build solution
-        run: dotnet build LegalDoc.sln --configuration Release
+        run: dotnet build LegalDoc.sln --no-restore --no-incremental --configuration Release
 
       - name: Run tests with coverage
         run: |
