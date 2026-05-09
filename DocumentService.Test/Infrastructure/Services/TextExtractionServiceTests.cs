@@ -1,4 +1,5 @@
 using System.Text;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DocumentService.Infrastructure.Services;
@@ -49,10 +50,20 @@ public class TextExtractionServiceTests
         using (var document = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
         {
             var mainPart = document.AddMainDocumentPart();
-            mainPart.Document = new Document(
-                new Body(
-                    new Paragraph(new Run(new Text("Line one"))),
-                    new Paragraph(new Run(new Text("Line two")))));
+            var text1 = new Text("Line one");
+            var run1 = new Run(); run1.AppendChild(text1);
+            var para1 = new Paragraph(); para1.AppendChild(run1);
+
+            var text2 = new Text("Line two");
+            var run2 = new Run(); run2.AppendChild(text2);
+            var para2 = new Paragraph(); para2.AppendChild(run2);
+
+            var body = new Body();
+            body.AppendChild(para1);
+            body.AppendChild(para2);
+
+            mainPart.Document = new Document();
+            mainPart.Document.AppendChild(body);
         }
 
         stream.Position = 0;

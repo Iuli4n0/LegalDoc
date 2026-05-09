@@ -22,13 +22,13 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new ClauseRepository(ctx);
         var clause = Clause.Create(doc.Id, "Text");
         await repo.AddAsync(clause);
 
-        Assert.NotNull(await ctx.Clauses.FindAsync(clause.Id));
+        Assert.NotNull(await ctx.Clauses.FindAsync(clause.Id).ConfigureAwait(false));
     }
 
     [Fact]
@@ -37,12 +37,12 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new ClauseRepository(ctx);
         await repo.AddRangeAsync([Clause.Create(doc.Id, "A"), Clause.Create(doc.Id, "B")]);
 
-        Assert.Equal(2, await ctx.Clauses.CountAsync());
+        Assert.Equal(2, await ctx.Clauses.CountAsync().ConfigureAwait(false));
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new ClauseRepository(ctx);
         await repo.AddAsync(Clause.Create(doc.Id, "First"));
@@ -76,11 +76,11 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var clause = Clause.Create(doc.Id, "T");
         ctx.Clauses.Add(clause);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new ClauseRepository(ctx);
         Assert.NotNull(await repo.GetByIdAsync(clause.Id));
@@ -100,15 +100,15 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var clause = Clause.Create(doc.Id, "T");
         ctx.Clauses.Add(clause);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var repo = new ClauseRepository(ctx);
         await repo.DeleteAsync(clause);
-        Assert.Null(await ctx.Clauses.FindAsync(clause.Id));
+        Assert.Null(await ctx.Clauses.FindAsync(clause.Id).ConfigureAwait(false));
     }
 
     [Fact]
@@ -117,17 +117,17 @@ public class ClauseRepositoryTests
         await using var ctx = CreateContext();
         var doc = Document.Create("f.pdf", "application/pdf", "k", 100, "u");
         ctx.Documents.Add(doc);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         var clause = Clause.Create(doc.Id, "T");
         ctx.Clauses.Add(clause);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
 
         clause.SetClassification(true, 0.9);
         var repo = new ClauseRepository(ctx);
         await repo.UpdateRangeAsync([clause]);
 
-        var updated = await ctx.Clauses.AsNoTracking().FirstAsync(c => c.Id == clause.Id);
+        var updated = await ctx.Clauses.AsNoTracking().FirstAsync(c => c.Id == clause.Id).ConfigureAwait(false);
         Assert.True(updated.IsAbusive);
     }
 }

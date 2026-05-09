@@ -17,7 +17,7 @@ public class CheckUserLimitsQueryHandler : IRequestHandler<CheckUserLimitsQuery,
 
     public async Task<CheckUserLimitsResponse> Handle(CheckUserLimitsQuery request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId).ConfigureAwait(false);
 
         if (user is null)
             throw new KeyNotFoundException($"User {request.UserId} not found.");
@@ -26,7 +26,7 @@ public class CheckUserLimitsQueryHandler : IRequestHandler<CheckUserLimitsQuery,
         var canUpload = user.CanUploadDocument();
 
         // If the monthly counter was reset, persist the change
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
         return new CheckUserLimitsResponse(
             user.TotalDocumentsUploaded,

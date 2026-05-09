@@ -47,7 +47,7 @@ public class IndexDocumentCommandHandler
     {
         _logger.LogInformation("Starting document indexing for document {DocumentId}", request.DocumentId);
 
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
             throw new InvalidOperationException($"Document with ID '{request.DocumentId}' not found.");
 
@@ -56,33 +56,33 @@ public class IndexDocumentCommandHandler
                 $"Content type '{document.ContentType}' is not supported for indexing. Supported types: PDF, DOCX, TXT.");
 
         // Delete any existing chunks (re-index scenario)
-        await _chunkRepository.DeleteByDocumentIdAsync(request.DocumentId);
+        await _chunkRepository.DeleteByDocumentIdAsync(request.DocumentId).ConfigureAwait(false);
 
         // Extract text from document
-        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key);
-        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType);
+        await using var fileStream = await _fileStorageService.DownloadFileAsync(document.S3Key).ConfigureAwait(false);
+        var extractedText = await _textExtractionService.ExtractTextAsync(fileStream, document.ContentType).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(extractedText))
             throw new InvalidOperationException("No text could be extracted from the document.");
 
         // Split into chunks
         var textChunks = SplitIntoChunks(extractedText, DefaultChunkSize, ChunkOverlap);
-        _logger.LogInformation("Text split into {ChunkCount} chunk(s) for indexing", textChunks.Count);
+        _logger.LogDebug("Text split into {ChunkCount} chunk(s) for indexing", textChunks.Count);
 
         // Generate embeddings and create entities
         var documentChunks = new List<DocumentChunk>();
         for (var i = 0; i < textChunks.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
-            _logger.LogInformation("Generating embedding for chunk {Current}/{Total}", i + 1, textChunks.Count);
-            var embedding = await _embeddingService.GenerateEmbeddingAsync(textChunks[i], cancellationToken);
+
+            _logger.LogDebug("Generating embedding for chunk {Current}/{Total}", i + 1, textChunks.Count);
+            var embedding = await _embeddingService.GenerateEmbeddingAsync(textChunks[i], cancellationToken).ConfigureAwait(false);
             var chunk = DocumentChunk.Create(request.DocumentId, i, textChunks[i], embedding);
             documentChunks.Add(chunk);
         }
 
         // Store all chunks
-        await _chunkRepository.AddRangeAsync(documentChunks);
+        await _chunkRepository.AddRangeAsync(documentChunks).ConfigureAwait(false);
 
         var indexedAt = DateTime.UtcNow;
         _logger.LogInformation(

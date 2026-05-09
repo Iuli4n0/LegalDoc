@@ -19,10 +19,10 @@ public class ClauseClassificationService : IClauseClassificationService
 
     public async Task<ClauseClassificationResult> ClassifyAsync(string clauseText, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.PostAsJsonAsync("/predict", new PredictRequest(clauseText), cancellationToken);
+        var response = await _httpClient.PostAsJsonAsync("/predict", new PredictRequest(clauseText), cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var payload = await response.Content.ReadFromJsonAsync<PredictResponse>(cancellationToken: cancellationToken);
+        var payload = await response.Content.ReadFromJsonAsync<PredictResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
         if (payload is null)
         {
             throw new InvalidOperationException("Classifier returned an empty response.");

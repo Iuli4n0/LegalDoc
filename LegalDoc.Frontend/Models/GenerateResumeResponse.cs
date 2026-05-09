@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-public record GenerateResumeResponse(
+internal record GenerateResumeResponse(
     Guid DocumentId,
     string Resume,
     DateTime GeneratedAt,

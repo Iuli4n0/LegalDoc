@@ -65,7 +65,7 @@ public class OllamaQAService : IQAService
                       RĂSPUNS ORGANIZAT:
                       """;
 
-        return await SendToOllamaAsync(prompt, cancellationToken);
+        return await SendToOllamaAsync(prompt, cancellationToken).ConfigureAwait(false);
     }
 
     private static string BuildContextText(string[] chunks)
@@ -93,7 +93,7 @@ public class OllamaQAService : IQAService
             {
                 Model = _model,
                 Prompt = prompt
-            }, linkedCts.Token))
+            }, linkedCts.Token).ConfigureAwait(false))
             {
                 if (!string.IsNullOrEmpty(stream?.Response))
                 {

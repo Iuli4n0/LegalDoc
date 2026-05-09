@@ -25,8 +25,8 @@ public class DocumentChunkRepository : IDocumentChunkRepository
 
     public async Task AddRangeAsync(IEnumerable<DocumentChunk> chunks)
     {
-        await _context.DocumentChunks.AddRangeAsync(chunks);
-        await _context.SaveChangesAsync();
+        await _context.DocumentChunks.AddRangeAsync(chunks).ConfigureAwait(false);
+        await _context.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<List<DocumentChunkSearchResult>> SearchSimilarAsync(
@@ -43,7 +43,7 @@ public class DocumentChunkRepository : IDocumentChunkRepository
                 c.ChunkIndex,
                 c.Text,
                 c.Embedding!.CosineDistance(queryVector)))
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
 
         _logger.LogInformation(
             "Similarity search for document {DocumentId}: found {Count} results (top-{TopK})",
@@ -55,19 +55,19 @@ public class DocumentChunkRepository : IDocumentChunkRepository
     public async Task<bool> IsDocumentIndexedAsync(Guid documentId)
     {
         return await _context.DocumentChunks
-            .AnyAsync(c => c.DocumentId == documentId);
+            .AnyAsync(c => c.DocumentId == documentId).ConfigureAwait(false);
     }
 
     public async Task DeleteByDocumentIdAsync(Guid documentId)
     {
         var chunks = await _context.DocumentChunks
             .Where(c => c.DocumentId == documentId)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
 
         if (chunks.Count > 0)
         {
             _context.DocumentChunks.RemoveRange(chunks);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
             _logger.LogInformation("Deleted {Count} chunks for document {DocumentId}", chunks.Count, documentId);
         }
     }
@@ -75,6 +75,6 @@ public class DocumentChunkRepository : IDocumentChunkRepository
     public async Task<int> CountByDocumentIdAsync(Guid documentId)
     {
         return await _context.DocumentChunks
-            .CountAsync(c => c.DocumentId == documentId);
+            .CountAsync(c => c.DocumentId == documentId).ConfigureAwait(false);
     }
 }

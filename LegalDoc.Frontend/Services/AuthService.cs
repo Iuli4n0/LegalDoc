@@ -4,8 +4,13 @@ using LegalDoc.Frontend.Models;
 
 namespace LegalDoc.Frontend.Services;
 
-public class AuthService
+internal class AuthService
 {
+    private const string AuthTokenKey = "authToken";
+    private const string UserNameKey = "userName";
+    private const string UserEmailKey = "userEmail";
+    private const string UserRoleKey = "userRole";
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAuthStorage _authStorage;
     private readonly AuthStateService _authState;
@@ -23,22 +28,23 @@ public class AuthService
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
         var client = _httpClientFactory.CreateClient("IdentityAPI");
-        var response = await client.PostAsJsonAsync("/api/auth/login", request);
+        var response = await client.PostAsJsonAsync("/api/auth/login", request).ConfigureAwait(false);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             throw new UnauthorizedAccessException("Email sau parolă incorectă.");
 
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>()
-                     ?? throw new Exception("Răspuns invalid de la server.");
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>().ConfigureAwait(false);
+        if (result is null)
+            throw new InvalidOperationException("Răspuns invalid de la server.");
 
         var role = ExtractRoleFromToken(result.Token);
 
-        await _authStorage.SetAsync("authToken", result.Token);
-        await _authStorage.SetAsync("userName", result.FullName);
-        await _authStorage.SetAsync("userEmail", result.Email);
-        await _authStorage.SetAsync("userRole", role);
+        await _authStorage.SetAsync(AuthTokenKey, result.Token).ConfigureAwait(false);
+        await _authStorage.SetAsync(UserNameKey, result.FullName).ConfigureAwait(false);
+        await _authStorage.SetAsync(UserEmailKey, result.Email).ConfigureAwait(false);
+        await _authStorage.SetAsync(UserRoleKey, role).ConfigureAwait(false);
 
         _authState.SetAuthenticated(result.FullName, result.Email, result.Token, role);
 
@@ -48,7 +54,7 @@ public class AuthService
     public async Task<RegisterResponse> RegisterAsync(RegisterRequest request)
     {
         var client = _httpClientFactory.CreateClient("IdentityAPI");
-        var response = await client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await client.PostAsJsonAsync("/api/auth/register", request).ConfigureAwait(false);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
@@ -57,16 +63,19 @@ public class AuthService
 
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<RegisterResponse>()
-               ?? throw new Exception("Răspuns invalid de la server.");
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>().ConfigureAwait(false);
+        if (result is null)
+            throw new InvalidOperationException("Răspuns invalid de la server.");
+
+        return result;
     }
 
     public async Task LogoutAsync()
     {
-        await _authStorage.DeleteAsync("authToken");
-        await _authStorage.DeleteAsync("userName");
-        await _authStorage.DeleteAsync("userEmail");
-        await _authStorage.DeleteAsync("userRole");
+        await _authStorage.DeleteAsync(AuthTokenKey).ConfigureAwait(false);
+        await _authStorage.DeleteAsync(UserNameKey).ConfigureAwait(false);
+        await _authStorage.DeleteAsync(UserEmailKey).ConfigureAwait(false);
+        await _authStorage.DeleteAsync(UserRoleKey).ConfigureAwait(false);
         _authState.SetLoggedOut();
     }
 
@@ -74,7 +83,7 @@ public class AuthService
     {
         try
         {
-            var result = await _authStorage.GetAsync("authToken");
+            var result = await _authStorage.GetAsync(AuthTokenKey).ConfigureAwait(false);
             return result.Success ? result.Value : null;
         }
         catch
@@ -85,7 +94,7 @@ public class AuthService
 
     public async Task<bool> IsAuthenticatedAsync()
     {
-        var token = await GetTokenAsync();
+        var token = await GetTokenAsync().ConfigureAwait(false);
         return !string.IsNullOrEmpty(token);
     }
 
@@ -93,10 +102,10 @@ public class AuthService
     {
         try
         {
-            var tokenResult = await _authStorage.GetAsync("authToken");
-            var nameResult = await _authStorage.GetAsync("userName");
-            var emailResult = await _authStorage.GetAsync("userEmail");
-            var roleResult = await _authStorage.GetAsync("userRole");
+            var tokenResult = await _authStorage.GetAsync(AuthTokenKey).ConfigureAwait(false);
+            var nameResult = await _authStorage.GetAsync(UserNameKey).ConfigureAwait(false);
+            var emailResult = await _authStorage.GetAsync(UserEmailKey).ConfigureAwait(false);
+            var roleResult = await _authStorage.GetAsync(UserRoleKey).ConfigureAwait(false);
 
             if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
             {
@@ -124,8 +133,8 @@ public class AuthService
         {
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(token);
-            var roleClaim = jwt.Claims.FirstOrDefault(c => 
-                c.Type == "role" || 
+            var roleClaim = jwt.Claims.FirstOrDefault(c =>
+                c.Type == "role" ||
                 c.Type == System.Security.Claims.ClaimTypes.Role ||
                 c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
             return roleClaim?.Value ?? "User";

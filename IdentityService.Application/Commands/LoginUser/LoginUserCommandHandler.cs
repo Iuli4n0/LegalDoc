@@ -9,7 +9,7 @@ namespace IdentityService.Application.Commands.LoginUser;
 public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, LoginUserResponse>
 {
     private const int TokenExpirationHours = 24;
-    
+
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
@@ -27,8 +27,8 @@ public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, LoginUs
     public async Task<LoginUserResponse> Handle(LoginUserCommand request, CancellationToken cancellationToken)
     {
         // Find user by email
-        var user = await _userRepository.GetByEmailAsync(request.Email);
-        
+        var user = await _userRepository.GetByEmailAsync(request.Email).ConfigureAwait(false);
+
         if (user is null)
         {
             throw new UnauthorizedAccessException("Invalid email or password.");
@@ -42,7 +42,7 @@ public class LoginUserCommandHandler : IRequestHandler<LoginUserCommand, LoginUs
 
         // Update last login
         user.UpdateLastLogin();
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
         // Generate JWT token
         var token = _jwtTokenGenerator.GenerateToken(user);

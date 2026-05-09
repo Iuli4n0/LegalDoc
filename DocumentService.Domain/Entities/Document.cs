@@ -22,19 +22,19 @@ public class Document
     {
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("File name cannot be empty.", nameof(fileName));
-        
+
         if (string.IsNullOrWhiteSpace(contentType))
             throw new ArgumentException("Content type cannot be empty.", nameof(contentType));
-        
+
         if (string.IsNullOrWhiteSpace(s3Key))
             throw new ArgumentException("S3 key cannot be empty.", nameof(s3Key));
-        
+
         if (fileSize <= 0)
             throw new ArgumentException("File size must be greater than zero.", nameof(fileSize));
-        
+
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        
+
         return new Document
         {
             Id = Guid.NewGuid(),
@@ -51,7 +51,7 @@ public class Document
     {
         if (string.IsNullOrWhiteSpace(resume))
             throw new ArgumentException("Resume cannot be empty.", nameof(resume));
-        
+
         Resume = resume;
         ResumeGeneratedAt = DateTime.UtcNow;
     }

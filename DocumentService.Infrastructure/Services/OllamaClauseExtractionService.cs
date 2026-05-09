@@ -26,7 +26,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
     public OllamaClauseExtractionService(HttpClient httpClient, IConfiguration configuration, ILogger<OllamaClauseExtractionService> logger)
     {
         _logger = logger;
-        
+
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         _model = configuration["Ollama:Model"] ?? "llama3.1:latest";
@@ -55,7 +55,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
         for (var i = 0; i < chunks.Count; i++)
         {
             _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
-            var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken);
+            var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken).ConfigureAwait(false);
             var parsedClauses = ParseClauses(rawResponse);
 
             foreach (var clause in parsedClauses)
@@ -103,16 +103,16 @@ public class OllamaClauseExtractionService : IClauseExtractorService
                 Prompt = prompt
             };
 
-            await foreach (var stream in _ollamaClient.GenerateAsync(request, linkedCts.Token))
+            await foreach (var stream in _ollamaClient.GenerateAsync(request, linkedCts.Token).ConfigureAwait(false))
             {
                 if (stream != null) sb.Append(stream.Response);
             }
 
             return sb.ToString();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogError("Ollama request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
+            _logger.LogError(ex, "Ollama request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
             return string.Empty;
         }
         catch (Exception ex)

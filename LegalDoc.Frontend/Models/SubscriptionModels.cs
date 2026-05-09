@@ -1,10 +1,10 @@
 namespace LegalDoc.Frontend.Models;
 
-public class CreateCheckoutRequest
+internal class CreateCheckoutRequest
 {
     public string Plan { get; set; } = string.Empty;
 }
 
-public record CheckoutResponse(string CheckoutUrl);
+internal record CheckoutResponse(string CheckoutUrl);
 
-public record PortalResponse(string PortalUrl);
+internal record PortalResponse(string PortalUrl);

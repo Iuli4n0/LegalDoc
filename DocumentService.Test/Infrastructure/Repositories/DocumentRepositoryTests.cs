@@ -17,7 +17,7 @@ public class DocumentRepositoryTests
 
         await repository.AddAsync(document);
 
-        var saved = await context.Documents.SingleAsync();
+        var saved = await context.Documents.SingleAsync().ConfigureAwait(false);
         Assert.Equal(document.Id, saved.Id);
     }
 
@@ -26,8 +26,8 @@ public class DocumentRepositoryTests
     {
         await using var context = CreateContext();
         var document = Document.Create("a.pdf", "application/pdf", "k1", 10, "user-1");
-        await context.Documents.AddAsync(document);
-        await context.SaveChangesAsync();
+        await context.Documents.AddAsync(document).ConfigureAwait(false);
+        await context.SaveChangesAsync().ConfigureAwait(false);
 
         var repository = new DocumentRepository(context);
 
@@ -53,15 +53,15 @@ public class DocumentRepositoryTests
     {
         await using var context = CreateContext();
         var document = Document.Create("a.pdf", "application/pdf", "k1", 10, "user-1");
-        await context.Documents.AddAsync(document);
-        await context.SaveChangesAsync();
+        await context.Documents.AddAsync(document).ConfigureAwait(false);
+        await context.SaveChangesAsync().ConfigureAwait(false);
 
         document.SetResume("updated");
         var repository = new DocumentRepository(context);
 
         await repository.UpdateAsync(document);
 
-        var updated = await context.Documents.SingleAsync();
+        var updated = await context.Documents.SingleAsync().ConfigureAwait(false);
         Assert.Equal("updated", updated.Resume);
         Assert.NotNull(updated.ResumeGeneratedAt);
     }

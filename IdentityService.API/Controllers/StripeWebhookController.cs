@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using IdentityService.Application.Abstractions;
 using IdentityService.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Stripe;
@@ -13,7 +14,7 @@ namespace IdentityService.API.Controllers;
 
 [ApiController]
 [Route("api/stripe")]
-public class StripeWebhookController : ControllerBase
+internal class StripeWebhookController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;
@@ -30,9 +31,8 @@ public class StripeWebhookController : ControllerBase
     }
 
     [HttpPost("webhook")]
-    public async Task<IActionResult> HandleWebhook()
+    public async Task<IActionResult> HandleWebhook([ModelBinder(typeof(RawStringModelBinder))] string json)
     {
-        var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
         var webhookSecret = _configuration["Stripe:WebhookSecret"];
 
         Event stripeEvent;
@@ -45,7 +45,7 @@ public class StripeWebhookController : ControllerBase
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning("Stripe webhook signature verification failed: {Message}", ex.Message);
+            _logger.LogWarning(ex, "Stripe webhook signature verification failed: {Message}", ex.Message);
             return BadRequest(new { error = "Webhook signature verification failed." });
         }
 
@@ -54,15 +54,15 @@ public class StripeWebhookController : ControllerBase
         switch (stripeEvent.Type)
         {
             case EventTypes.CheckoutSessionCompleted:
-                await HandleCheckoutSessionCompleted(stripeEvent);
+                await HandleCheckoutSessionCompleted(stripeEvent).ConfigureAwait(false);
                 break;
 
             case EventTypes.CustomerSubscriptionUpdated:
-                await HandleSubscriptionUpdated(stripeEvent);
+                await HandleSubscriptionUpdated(stripeEvent).ConfigureAwait(false);
                 break;
 
             case EventTypes.CustomerSubscriptionDeleted:
-                await HandleSubscriptionDeleted(stripeEvent);
+                await HandleSubscriptionDeleted(stripeEvent).ConfigureAwait(false);
                 break;
 
             case EventTypes.InvoicePaymentFailed:
@@ -103,7 +103,7 @@ public class StripeWebhookController : ControllerBase
             return;
         }
 
-        var user = await _userRepository.GetByIdAsync(userGuid);
+        var user = await _userRepository.GetByIdAsync(userGuid).ConfigureAwait(false);
         if (user is null)
         {
             _logger.LogWarning("User {UserId} not found during checkout.session.completed", userId);
@@ -128,7 +128,7 @@ public class StripeWebhookController : ControllerBase
         user.UpdateSubscription(plan, session.SubscriptionId);
         user.ResetMonthlyCounter();
 
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(previousSubscriptionId)
             && !string.IsNullOrWhiteSpace(session.SubscriptionId)
@@ -141,7 +141,7 @@ public class StripeWebhookController : ControllerBase
                 {
                     Prorate = false,
                     InvoiceNow = false
-                });
+                }).ConfigureAwait(false);
                 _logger.LogInformation("Cancelled previous Stripe subscription {PreviousSubscriptionId} for user {UserId}", previousSubscriptionId, userId);
             }
             catch (Exception ex)
@@ -166,7 +166,7 @@ public class StripeWebhookController : ControllerBase
             return;
         }
 
-        var user = await _userRepository.GetByIdAsync(userGuid);
+        var user = await _userRepository.GetByIdAsync(userGuid).ConfigureAwait(false);
         if (user is null) return;
 
         if (!string.IsNullOrWhiteSpace(user.StripeSubscriptionId)
@@ -203,7 +203,7 @@ public class StripeWebhookController : ControllerBase
         // Sync period end
         user.SetCurrentPeriodEnd(subscription.CurrentPeriodEnd);
 
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
     }
 
     private async Task HandleSubscriptionDeleted(Event stripeEvent)
@@ -222,7 +222,7 @@ public class StripeWebhookController : ControllerBase
             return;
         }
 
-        var user = await _userRepository.GetByIdAsync(userGuid);
+        var user = await _userRepository.GetByIdAsync(userGuid).ConfigureAwait(false);
         if (user is null) return;
 
         if (!string.IsNullOrWhiteSpace(user.StripeSubscriptionId)
@@ -236,8 +236,18 @@ public class StripeWebhookController : ControllerBase
         user.UpdateSubscription(SubscriptionPlan.Free);
         user.ResetMonthlyCounter();
 
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
         _logger.LogInformation("User {UserId} subscription deleted, reverted to Free plan", userId);
+    }
+}
+
+public class RawStringModelBinder : IModelBinder
+{
+    public async Task BindModelAsync(ModelBindingContext bindingContext)
+    {
+        using var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
+        var value = await reader.ReadToEndAsync().ConfigureAwait(false);
+        bindingContext.Result = ModelBindingResult.Success(value);
     }
 }

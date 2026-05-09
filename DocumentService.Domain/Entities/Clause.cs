@@ -21,10 +21,10 @@ public class Clause
     {
         if (documentId == Guid.Empty)
             throw new ArgumentException("Document ID cannot be empty.", nameof(documentId));
-        
+
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("Clause text cannot be empty.", nameof(text));
-        
+
         return new Clause
         {
             Id = Guid.NewGuid(),

@@ -23,11 +23,13 @@ public class StripeService : IStripeService
     public async Task<string> CreateCheckoutSessionAsync(Guid userId, string email, SubscriptionPlan plan)
     {
         var priceId = GetPriceId(plan);
-        var successUrl = _configuration["Stripe:SuccessUrl"] ?? "http://localhost:5288/subscription/success";
-        var cancelUrl = _configuration["Stripe:CancelUrl"] ?? "http://localhost:5288/subscription/cancel";
+        var successUrl = _configuration["Stripe:SuccessUrl"]
+            ?? throw new InvalidOperationException("Stripe:SuccessUrl missing from configuration.");
+        var cancelUrl = _configuration["Stripe:CancelUrl"]
+            ?? throw new InvalidOperationException("Stripe:CancelUrl missing from configuration.");
 
         // Ensure user has a Stripe customer
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(userId).ConfigureAwait(false);
         if (user is null)
             throw new KeyNotFoundException($"User {userId} not found.");
 
@@ -45,10 +47,10 @@ public class StripeService : IStripeService
                 {
                     { "userId", userId.ToString() }
                 }
-            });
+            }).ConfigureAwait(false);
             customerId = customer.Id;
             user.SetStripeCustomerId(customerId);
-            await _userRepository.UpdateAsync(user);
+            await _userRepository.UpdateAsync(user).ConfigureAwait(false);
         }
         else
         {
@@ -56,7 +58,7 @@ public class StripeService : IStripeService
         }
 
         // Credit the amount of current plan once when user upgrades.
-        var discountOptions = await BuildUpgradeDiscountAsync(user.SubscriptionPlan, plan);
+        var discountOptions = await BuildUpgradeDiscountAsync(user.SubscriptionPlan, plan).ConfigureAwait(false);
 
         var sessionOptions = new SessionCreateOptions
         {
@@ -96,23 +98,23 @@ public class StripeService : IStripeService
         }
 
         var sessionService = new SessionService();
-        var session = await sessionService.CreateAsync(sessionOptions);
+        var session = await sessionService.CreateAsync(sessionOptions).ConfigureAwait(false);
 
         return session.Url;
     }
 
     public async Task<string> CreateCustomerPortalSessionAsync(string stripeCustomerId)
     {
-        var returnUrl = _configuration["Stripe:PortalReturnUrl"] 
-                        ?? _configuration["Stripe:SuccessUrl"] 
-                        ?? "http://localhost:5288/profile";
+        var returnUrl = _configuration["Stripe:PortalReturnUrl"]
+                        ?? _configuration["Stripe:SuccessUrl"]
+                        ?? throw new InvalidOperationException("Stripe:PortalReturnUrl missing from configuration.");
 
         var portalService = new Stripe.BillingPortal.SessionService();
         var session = await portalService.CreateAsync(new Stripe.BillingPortal.SessionCreateOptions
         {
             Customer = stripeCustomerId,
             ReturnUrl = returnUrl
-        });
+        }).ConfigureAwait(false);
 
         return session.Url;
     }
@@ -147,7 +149,7 @@ public class StripeService : IStripeService
             Currency = "ron",
             AmountOff = amountOffRon * 100,
             Name = $"Upgrade credit: {currentPlan}"
-        });
+        }).ConfigureAwait(false);
 
         return new SessionDiscountOptions
         {

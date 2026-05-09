@@ -23,9 +23,9 @@ public class GetUserDocumentsQueryHandler : IRequestHandler<GetUserDocumentsQuer
             request.Page,
             request.PageSize,
             request.SortBy,
-            request.Ascending);
+            request.Ascending).ConfigureAwait(false);
 
-        var totalCount = await _documentRepository.CountByUserIdAsync(request.UserId);
+        var totalCount = await _documentRepository.CountByUserIdAsync(request.UserId).ConfigureAwait(false);
 
         var items = documents.Select(d => new GetDocumentResponse(
             d.Id,

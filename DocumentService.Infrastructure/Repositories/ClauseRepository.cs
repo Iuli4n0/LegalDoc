@@ -21,14 +21,14 @@ public class ClauseRepository : IClauseRepository
 
     public async Task AddAsync(Clause clause)
     {
-        await _dbContext.Clauses.AddAsync(clause);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.Clauses.AddAsync(clause).ConfigureAwait(false);
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task AddRangeAsync(IEnumerable<Clause> clauses)
     {
-        await _dbContext.Clauses.AddRangeAsync(clauses);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.Clauses.AddRangeAsync(clauses).ConfigureAwait(false);
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<Clause>> GetByDocumentIdAsync(Guid documentId)
@@ -36,16 +36,16 @@ public class ClauseRepository : IClauseRepository
         return await _dbContext.Clauses
             .Where(c => c.DocumentId == documentId)
             .OrderBy(c => c.ExtractedAt)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 
     public async Task ReplaceForDocumentAsync(Guid documentId, IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         var existingClauses = await _dbContext.Clauses
             .Where(c => c.DocumentId == documentId)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         if (existingClauses.Count > 0)
         {
@@ -54,27 +54,27 @@ public class ClauseRepository : IClauseRepository
 
         if (clauses.Count > 0)
         {
-            await _dbContext.Clauses.AddRangeAsync(clauses, cancellationToken);
+            await _dbContext.Clauses.AddRangeAsync(clauses, cancellationToken).ConfigureAwait(false);
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task UpdateRangeAsync(IReadOnlyList<Clause> clauses, CancellationToken cancellationToken = default)
     {
         _dbContext.Clauses.UpdateRange(clauses);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Clause?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Clauses.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        return await _dbContext.Clauses.FirstOrDefaultAsync(c => c.Id == id, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(Clause clause, CancellationToken cancellationToken = default)
     {
         _dbContext.Clauses.Remove(clause);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

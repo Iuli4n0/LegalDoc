@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LegalDoc.Frontend.Models;
 
-public record GetDocumentClausesResponse(
+internal record GetDocumentClausesResponse(
     Guid DocumentId,
     IReadOnlyList<DocumentClauseItem> Clauses,
     DateTime? GeneratedAt

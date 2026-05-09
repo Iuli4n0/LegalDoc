@@ -22,10 +22,10 @@ public class AppDbContextTests
         Assert.NotNull(entity.FindIndex(entity.FindProperty(nameof(Document.UserId))!));
 
         var doc = Document.Create("x.pdf", "application/pdf", "k", 1, "user-1");
-        await context.Documents.AddAsync(doc);
-        await context.SaveChangesAsync();
+        await context.Documents.AddAsync(doc).ConfigureAwait(false);
+        await context.SaveChangesAsync().ConfigureAwait(false);
 
-        var loaded = await context.Documents.SingleAsync();
+        var loaded = await context.Documents.SingleAsync().ConfigureAwait(false);
         Assert.Equal(doc.Id, loaded.Id);
     }
 
@@ -43,7 +43,7 @@ public class AppDbContextTests
 /// Test-specific DbContext that ignores the pgvector Embedding property
 /// which is not supported by the InMemory provider.
 /// </summary>
-public class TestAppDbContext : AppDbContext
+internal class TestAppDbContext : AppDbContext
 {
     public TestAppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

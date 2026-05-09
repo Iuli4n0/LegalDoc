@@ -49,7 +49,7 @@ public class OllamaEmbeddingService : IEmbeddingService
                 Input = [text]
             };
 
-            var response = await _ollamaClient.EmbedAsync(request, linkedCts.Token);
+            var response = await _ollamaClient.EmbedAsync(request, linkedCts.Token).ConfigureAwait(false);
 
             if (response?.Embeddings is null || response.Embeddings.Count == 0)
                 throw new InvalidOperationException("Ollama returned no embeddings.");
@@ -61,9 +61,10 @@ public class OllamaEmbeddingService : IEmbeddingService
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            _logger.LogError(ex, "Ollama returned 404. Embedding model '{Model}' is likely missing; run `ollama pull {Model}`.", _model, _model);
+            var pullCommand = $"ollama pull {_model}";
+            _logger.LogError(ex, "Ollama returned 404. Embedding model '{Model}' is likely missing; run `{PullCommand}`.", _model, pullCommand);
             throw new InvalidOperationException(
-                $"Ollama embedding model '{_model}' is not available. Pull it first (example: ollama pull {_model}).",
+                $"Ollama embedding model '{_model}' is not available. Pull it first (example: {pullCommand}).",
                 ex);
         }
         catch (OperationCanceledException ex)

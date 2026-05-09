@@ -2,5 +2,5 @@ using System;
 
 namespace LegalDoc.Frontend.Models;
 
-public record AddClauseRequest(string Text);
-public record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);
+internal record AddClauseRequest(string Text);
+internal record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);

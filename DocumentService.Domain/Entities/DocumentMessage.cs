@@ -19,7 +19,7 @@ public class DocumentMessage
     {
         if (documentId == Guid.Empty)
             throw new ArgumentException("Document ID cannot be empty.", nameof(documentId));
-        
+
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 

@@ -20,13 +20,13 @@ public class GetDocumentClausesQueryHandler : IRequestHandler<GetDocumentClauses
 
     public async Task<GetDocumentClausesResponse> Handle(GetDocumentClausesQuery request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
         {
             throw new InvalidOperationException($"Document with ID '{request.DocumentId}' not found.");
         }
 
-        var clauses = await _clauseRepository.GetByDocumentIdAsync(request.DocumentId);
+        var clauses = await _clauseRepository.GetByDocumentIdAsync(request.DocumentId).ConfigureAwait(false);
 
         return new GetDocumentClausesResponse(
             request.DocumentId,

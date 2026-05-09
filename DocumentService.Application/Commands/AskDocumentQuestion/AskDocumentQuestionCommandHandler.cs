@@ -49,30 +49,30 @@ public class AskDocumentQuestionCommandHandler
         // Save user message
         var userMessage = DocumentService.Domain.Entities.DocumentMessage.Create(
             request.DocumentId, true, request.Question);
-        await _messageRepository.AddAsync(userMessage);
+        await _messageRepository.AddAsync(userMessage).ConfigureAwait(false);
 
         // Verify document exists
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
             throw new InvalidOperationException($"Document with ID '{request.DocumentId}' not found.");
 
         // Check if document is indexed; if not, index it first
         var isNewlyIndexed = false;
-        var isIndexed = await _chunkRepository.IsDocumentIndexedAsync(request.DocumentId);
+        var isIndexed = await _chunkRepository.IsDocumentIndexedAsync(request.DocumentId).ConfigureAwait(false);
         if (!isIndexed)
         {
             _logger.LogInformation("Document {DocumentId} is not indexed. Starting indexing...", request.DocumentId);
-            await _mediator.Send(new IndexDocumentCommand(request.DocumentId), cancellationToken);
+            await _mediator.Send(new IndexDocumentCommand(request.DocumentId), cancellationToken).ConfigureAwait(false);
             isNewlyIndexed = true;
         }
 
         // Generate embedding for the question
-        _logger.LogInformation("Generating embedding for question");
-        var questionEmbedding = await _embeddingService.GenerateEmbeddingAsync(request.Question, cancellationToken);
+        _logger.LogDebug("Generating embedding for question");
+        var questionEmbedding = await _embeddingService.GenerateEmbeddingAsync(request.Question, cancellationToken).ConfigureAwait(false);
 
         // Search for similar chunks
         var searchResults = await _chunkRepository.SearchSimilarAsync(
-            request.DocumentId, questionEmbedding, TopK);
+            request.DocumentId, questionEmbedding, TopK).ConfigureAwait(false);
 
         if (searchResults.Count == 0)
         {
@@ -87,7 +87,7 @@ public class AskDocumentQuestionCommandHandler
 
         // Generate answer using LLM
         var contextChunks = searchResults.Select(r => r.Text).ToArray();
-        var answer = await _qaService.GenerateAnswerAsync(request.Question, contextChunks, cancellationToken);
+        var answer = await _qaService.GenerateAnswerAsync(request.Question, contextChunks, cancellationToken).ConfigureAwait(false);
 
         var sourceChunks = searchResults
             .Select(r => new SourceChunkDto(r.ChunkIndex, r.Text, r.Distance))
@@ -97,7 +97,7 @@ public class AskDocumentQuestionCommandHandler
         var sourcesJson = System.Text.Json.JsonSerializer.Serialize(sourceChunks);
         var assistantMessage = DocumentService.Domain.Entities.DocumentMessage.Create(
             request.DocumentId, false, answer, sourcesJson);
-        await _messageRepository.AddAsync(assistantMessage);
+        await _messageRepository.AddAsync(assistantMessage).ConfigureAwait(false);
 
         return new AskDocumentQuestionResponse(answer, sourceChunks, isNewlyIndexed);
     }

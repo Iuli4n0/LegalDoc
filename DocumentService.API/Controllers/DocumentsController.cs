@@ -21,11 +21,12 @@ namespace DocumentService.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class DocumentsController : ControllerBase
+internal class DocumentsController : ControllerBase
 {
     private const int GatewayTimeoutStatusCode = 504;
     private const int InternalServerErrorStatusCode = 500;
-    
+    private const string NotFoundMessage = "not found";
+
     private readonly IMediator _mediator;
     private readonly IHttpClientFactory _httpClientFactory;
 
@@ -36,7 +37,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("upload")]
-    [DisableRequestSizeLimit]
+    [RequestSizeLimit(104857600)]
     public async Task<ActionResult<UploadDocumentResponse>> UploadDocument(IFormFile file)
     {
         if (file.Length == 0)
@@ -50,11 +51,11 @@ public class DocumentsController : ControllerBase
         try
         {
             var identityClient = CreateIdentityClient();
-            var limitsResponse = await identityClient.GetAsync($"/api/auth/users/{userId}/limits");
-            
+            var limitsResponse = await identityClient.GetAsync($"/api/auth/users/{userId}/limits").ConfigureAwait(false);
+
             if (limitsResponse.IsSuccessStatusCode)
             {
-                var limits = await limitsResponse.Content.ReadFromJsonAsync<UserLimitsDto>();
+                var limits = await limitsResponse.Content.ReadFromJsonAsync<UserLimitsDto>().ConfigureAwait(false);
                 if (limits is not null)
                 {
                     // Check document count limit
@@ -79,7 +80,7 @@ public class DocumentsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        
+
         var command = new UploadDocumentCommand
         {
             FileStream = stream,
@@ -89,13 +90,13 @@ public class DocumentsController : ControllerBase
             UserId = userId
         };
 
-        var response = await _mediator.Send(command);
+        var response = await _mediator.Send(command).ConfigureAwait(false);
 
         // Increment document count in IdentityService
         try
         {
             var identityClient = CreateIdentityClient();
-            await identityClient.PostAsync($"/api/auth/users/{userId}/increment-documents", null);
+            await identityClient.PostAsync($"/api/auth/users/{userId}/increment-documents", null).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -120,7 +121,7 @@ public class DocumentsController : ControllerBase
         if (pageSize is < 1 or > 100) pageSize = 10;
 
         var query = new GetUserDocumentsQuery(userId, page, pageSize, sortBy, ascending);
-        var response = await _mediator.Send(query);
+        var response = await _mediator.Send(query).ConfigureAwait(false);
         return Ok(response);
     }
 
@@ -132,7 +133,7 @@ public class DocumentsController : ControllerBase
             return Unauthorized();
 
         var query = new GetDocumentQuery(id);
-        var response = await _mediator.Send(query);
+        var response = await _mediator.Send(query).ConfigureAwait(false);
 
         if (response is null)
             return NotFound();
@@ -154,7 +155,7 @@ public class DocumentsController : ControllerBase
         {
             // Verify ownership before generating resume
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -163,10 +164,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var command = new GenerateDocumentResumeCommand(id);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -195,7 +196,7 @@ public class DocumentsController : ControllerBase
         {
             // Verify ownership before extracting clauses
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -204,10 +205,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var command = new GenerateDocumentClausesCommand(id);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -236,7 +237,7 @@ public class DocumentsController : ControllerBase
         {
             // Verify ownership
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -245,10 +246,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var clausesQuery = new GetDocumentClausesQuery(id);
-            var response = await _mediator.Send(clausesQuery);
+            var response = await _mediator.Send(clausesQuery).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -268,7 +269,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var query = new DownloadDocumentQuery(id, userId);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query).ConfigureAwait(false);
             return File(result.Stream, result.ContentType, result.FileName);
         }
         catch (KeyNotFoundException ex)
@@ -295,7 +296,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var command = new DeleteDocumentCommand(id, userId);
-            await _mediator.Send(command);
+            await _mediator.Send(command).ConfigureAwait(false);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
@@ -322,7 +323,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -331,10 +332,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var command = new ClassifyDocumentClausesCommand(id);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -366,7 +367,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -375,10 +376,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var command = new IndexDocumentCommand(id);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -409,7 +410,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -418,10 +419,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var command = new AskDocumentQuestionCommand(id, request.Question);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -449,7 +450,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var query = new GetDocumentQuery(id);
-            var document = await _mediator.Send(query);
+            var document = await _mediator.Send(query).ConfigureAwait(false);
 
             if (document is null)
                 return NotFound();
@@ -458,10 +459,10 @@ public class DocumentsController : ControllerBase
                 return Forbid();
 
             var conversationQuery = new DocumentService.Application.Queries.GetDocumentConversation.GetDocumentConversationQuery(id);
-            var response = await _mediator.Send(conversationQuery);
+            var response = await _mediator.Send(conversationQuery).ConfigureAwait(false);
             return Ok(response);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(NotFoundMessage, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
         }
@@ -484,7 +485,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var command = new DocumentService.Application.Commands.AddDocumentClause.AddDocumentClauseCommand(id, userIdString, request.Text);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (InvalidOperationException ex)
@@ -507,7 +508,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var command = new DocumentService.Application.Commands.DeleteDocumentClause.DeleteDocumentClauseCommand(id, userIdString, clauseId);
-            await _mediator.Send(command);
+            await _mediator.Send(command).ConfigureAwait(false);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -533,7 +534,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var command = new DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesCommand(id, userIdString, request.FirstClauseId, request.SecondClauseId);
-            var response = await _mediator.Send(command);
+            var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
         catch (InvalidOperationException ex)
@@ -565,9 +566,9 @@ public class DocumentsController : ControllerBase
 }
 
 // DTO for IdentityService limits response
-public record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);
+internal record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);
 
-public record AskQuestionRequest(string Question);
+internal record AskQuestionRequest(string Question);
 
-public record AddClauseRequest(string Text);
-public record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);
+internal record AddClauseRequest(string Text);
+internal record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);

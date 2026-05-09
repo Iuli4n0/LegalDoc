@@ -22,18 +22,18 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
     public async Task<UploadDocumentResponse> Handle(UploadDocumentCommand request, CancellationToken cancellationToken)
     {
         var s3Key = await _fileStorageService.UploadFileAsync(
-            request.FileStream, 
-            request.FileName, 
-            request.ContentType);
+            request.FileStream,
+            request.FileName,
+            request.ContentType).ConfigureAwait(false);
 
         var document = Document.Create(
-            request.FileName, 
-            request.ContentType, 
-            s3Key, 
+            request.FileName,
+            request.ContentType,
+            s3Key,
             request.FileSize,
             request.UserId);
 
-        await _documentRepository.AddAsync(document);
+        await _documentRepository.AddAsync(document).ConfigureAwait(false);
 
         return new UploadDocumentResponse(
             document.Id,

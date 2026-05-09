@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-public record ClassifyClausesResponse(
+internal record ClassifyClausesResponse(
     Guid DocumentId,
     IReadOnlyList<DocumentClauseItem> Clauses,
     DateTime ClassifiedAt

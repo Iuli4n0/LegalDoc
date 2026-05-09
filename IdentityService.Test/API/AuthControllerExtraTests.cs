@@ -18,7 +18,7 @@ public class AuthControllerExtraTests
 {
     private readonly Mock<IMediator> _med = new();
     private readonly Mock<IUserRepository> _userRepo = new();
-    private AuthController _ctrl;
+    private readonly AuthController _ctrl;
 
     public AuthControllerExtraTests()
     {

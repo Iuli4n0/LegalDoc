@@ -20,25 +20,25 @@ public class DocumentRepository : IDocumentRepository
 
     public async Task AddAsync(Document document)
     {
-        await _dbContext.Documents.AddAsync(document);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.Documents.AddAsync(document).ConfigureAwait(false);
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<Document?> GetByIdAsync(Guid id)
     {
-        return await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == id);
+        return await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == id).ConfigureAwait(false);
     }
 
     public async Task UpdateAsync(Document document)
     {
         _dbContext.Documents.Update(document);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(Document document)
     {
         _dbContext.Documents.Remove(document);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<IEnumerable<Document>> GetByUserIdAsync(
@@ -48,21 +48,21 @@ public class DocumentRepository : IDocumentRepository
 
         query = sortBy?.ToLowerInvariant() switch
         {
-            "filename"   => ascending ? query.OrderBy(d => d.FileName)   : query.OrderByDescending(d => d.FileName),
-            "filesize"   => ascending ? query.OrderBy(d => d.FileSize)   : query.OrderByDescending(d => d.FileSize),
+            "filename" => ascending ? query.OrderBy(d => d.FileName) : query.OrderByDescending(d => d.FileName),
+            "filesize" => ascending ? query.OrderBy(d => d.FileSize) : query.OrderByDescending(d => d.FileSize),
             "contentype" => ascending ? query.OrderBy(d => d.ContentType) : query.OrderByDescending(d => d.ContentType),
-            _            => ascending ? query.OrderBy(d => d.UploadedAt) : query.OrderByDescending(d => d.UploadedAt),
+            _ => ascending ? query.OrderBy(d => d.UploadedAt) : query.OrderByDescending(d => d.UploadedAt),
         };
 
         return await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<int> CountByUserIdAsync(string userId)
     {
-        return await _dbContext.Documents.CountAsync(d => d.UserId == userId);
+        return await _dbContext.Documents.CountAsync(d => d.UserId == userId).ConfigureAwait(false);
     }
 }
 

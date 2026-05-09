@@ -21,7 +21,7 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
 
     public async Task Handle(DeleteDocumentCommand request, CancellationToken cancellationToken)
     {
-        var document = await _documentRepository.GetByIdAsync(request.DocumentId);
+        var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
 
         if (document is null)
             throw new KeyNotFoundException($"Document {request.DocumentId} not found.");
@@ -30,10 +30,10 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
             throw new UnauthorizedAccessException("You do not have permission to delete this document.");
 
         // Delete from DB first; if this fails, the S3 file is still intact.
-        await _documentRepository.DeleteAsync(document);
+        await _documentRepository.DeleteAsync(document).ConfigureAwait(false);
 
         // Delete from S3. If this fails the record is already gone, so we swallow and let the caller log.
-        await _fileStorageService.DeleteFileAsync(document.S3Key);
+        await _fileStorageService.DeleteFileAsync(document.S3Key).ConfigureAwait(false);
     }
 }
 

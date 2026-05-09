@@ -13,12 +13,12 @@ namespace DocumentService.Infrastructure.Services;
 
 public class OllamaResumeService : IResumeGeneratorService
 {
-    private const int DefaultChunkSize = 2500; 
-    private const int DefaultTimeoutSeconds = 300; 
-    private const int SingleResumeMaxWords = 400; 
+    private const int DefaultChunkSize = 2500;
+    private const int DefaultTimeoutSeconds = 300;
+    private const int SingleResumeMaxWords = 400;
     private const int ChunkResumeMaxWords = 250;
-    private const int CombinedResumeMaxWords = 800; 
-    private const double ChunkSplitThreshold = 0.15; 
+    private const int CombinedResumeMaxWords = 800;
+    private const double ChunkSplitThreshold = 0.15;
     private readonly OllamaApiClient _ollamaClient;
     private readonly string _model;
     private readonly int _chunkSize;
@@ -50,20 +50,20 @@ public class OllamaResumeService : IResumeGeneratorService
 
         if (chunks.Count == 1)
         {
-            var resume = await GenerateSingleResumeAsync(chunks[0], cancellationToken);
+            var resume = await GenerateSingleResumeAsync(chunks[0], cancellationToken).ConfigureAwait(false);
             return new ResumeResult(resume, 1);
         }
-        
+
         var partialResumes = new List<string>();
         for (var i = 0; i < chunks.Count; i++)
         {
             _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
-            var partialResume = await GenerateChunkResumeAsync(chunks[i], i + 1, chunks.Count, cancellationToken);
+            var partialResume = await GenerateChunkResumeAsync(chunks[i], i + 1, chunks.Count, cancellationToken).ConfigureAwait(false);
             partialResumes.Add(partialResume);
         }
-        
+
         _logger.LogInformation("Combining {Count} partial resumes into final resume", partialResumes.Count);
-        var finalResume = await CombineResumesAsync(partialResumes, cancellationToken);
+        var finalResume = await CombineResumesAsync(partialResumes, cancellationToken).ConfigureAwait(false);
 
         return new ResumeResult(finalResume, chunks.Count);
     }
@@ -84,7 +84,7 @@ public class OllamaResumeService : IResumeGeneratorService
                       REZUMATUL DOCUMENTULUI:
                       """;
 
-        return await SendToOllamaAsync(prompt, cancellationToken);
+        return await SendToOllamaAsync(prompt, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string> GenerateChunkResumeAsync(string chunkText, int chunkNumber, int totalChunks, CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ public class OllamaResumeService : IResumeGeneratorService
                       REZUMATUL FRAGMENTULUI:
                       """;
 
-        return await SendToOllamaAsync(prompt, cancellationToken);
+        return await SendToOllamaAsync(prompt, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string> CombineResumesAsync(List<string> partialResumes, CancellationToken cancellationToken)
@@ -128,7 +128,7 @@ public class OllamaResumeService : IResumeGeneratorService
                       REZUMATUL FINAL COERENT:
                       """;
 
-        return await SendToOllamaAsync(prompt, cancellationToken);
+        return await SendToOllamaAsync(prompt, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string> SendToOllamaAsync(string prompt, CancellationToken cancellationToken)
@@ -144,7 +144,7 @@ public class OllamaResumeService : IResumeGeneratorService
             {
                 Model = _model,
                 Prompt = prompt
-            }, linkedCts.Token))
+            }, linkedCts.Token).ConfigureAwait(false))
             {
                 if (!string.IsNullOrEmpty(stream?.Response))
                 {
@@ -158,9 +158,10 @@ public class OllamaResumeService : IResumeGeneratorService
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            _logger.LogError(ex, "Ollama returned 404. Model '{Model}' is likely missing; run `ollama pull {Model}`.", _model, _model);
+            var pullCommand = $"ollama pull {_model}";
+            _logger.LogError(ex, "Ollama returned 404. Model '{Model}' is likely missing; run `{PullCommand}`.", _model, pullCommand);
             throw new InvalidOperationException(
-                $"Ollama model '{_model}' is not available. Pull it first (example: ollama pull {_model}).",
+                $"Ollama model '{_model}' is not available. Pull it first (example: {pullCommand}).",
                 ex);
         }
         catch (OperationCanceledException exception)
@@ -184,7 +185,7 @@ public class OllamaResumeService : IResumeGeneratorService
         {
             var remainingLength = text.Length - currentIndex;
             var length = Math.Min(chunkSize, remainingLength);
-            
+
             if (length >= remainingLength)
             {
                 chunks.Add(text.Substring(currentIndex, length).Trim());

@@ -23,7 +23,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
     public async Task<RegisterUserResponse> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
         // Check if user already exists
-        if (await _userRepository.ExistsAsync(request.Email))
+        if (await _userRepository.ExistsAsync(request.Email).ConfigureAwait(false))
         {
             throw new InvalidOperationException($"User with email '{request.Email}' already exists.");
         }
@@ -35,7 +35,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
         var user = User.Create(request.Email, passwordHash, request.FullName);
 
         // Save to database
-        await _userRepository.AddAsync(user);
+        await _userRepository.AddAsync(user).ConfigureAwait(false);
 
         return new RegisterUserResponse(
             user.Id,

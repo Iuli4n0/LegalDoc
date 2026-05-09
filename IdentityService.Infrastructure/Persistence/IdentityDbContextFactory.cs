@@ -16,7 +16,7 @@ public class IdentityDbContextFactory : IDesignTimeDbContextFactory<IdentityDbCo
 
         var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>();
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-        
+
         optionsBuilder.UseNpgsql(connectionString);
 
         return new IdentityDbContext(optionsBuilder.Options);

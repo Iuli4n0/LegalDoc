@@ -84,7 +84,7 @@ public class S3FileStorageServiceTests
                 ResponseStream = new MemoryStream([1, 2, 3, 4])
             });
 
-        await using var result = await service.DownloadFileAsync("key");
+        await using var result = (await service.DownloadFileAsync("key"));
         using var reader = new BinaryReader(result);
 
         var bytes = reader.ReadBytes(4);
