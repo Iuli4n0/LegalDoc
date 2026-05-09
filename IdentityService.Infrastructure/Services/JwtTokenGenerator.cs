@@ -1,4 +1,3 @@
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -25,12 +24,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public string GenerateToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var keyStr = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+        var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
         var issuer = jwtSettings["Issuer"] ?? DefaultIssuer;
         var audience = jwtSettings["Audience"] ?? DefaultAudience;
         var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? DefaultExpirationMinutes.ToString());
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -54,4 +53,3 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
-
