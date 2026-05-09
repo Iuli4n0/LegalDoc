@@ -43,20 +43,20 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: ${{ runner.os }}-nuget-
 
-      - name: Install dotnet-sonarscanner
-        run: dotnet tool install --global dotnet-sonarscanner
-
-      - name: Install dotnet-coverage
-        run: dotnet tool install --global dotnet-coverage
+      - name: Install dotnet tools (SonarScanner & Coverage)
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          dotnet tool install --global dotnet-coverage
 
       - name: Restore dependencies
         run: dotnet restore LegalDoc.sln
-
-      - name: Begin SonarQube Analysis
+     
+      - name: Build, Test & SonarQube Analysis (Unified Step)
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "=== [1/4] Starting SonarScanner ==="
           dotnet sonarscanner begin \
             /k:"${{ vars.SONAR_PROJECT_KEY }}" \
             /o:"${{ vars.SONAR_ORGANIZATION }}" \
@@ -66,21 +66,17 @@ jobs:
             /d:sonar.coverage.exclusions="**/*Test*/**,**/*Tests*/**,**/Migrations/**,**/Program.cs,**/obj/**,**/bin/**,LegalDoc.Frontend/Components/Pages/Login.razor,LegalDoc.Frontend/Components/Pages/Register.razor,LegalDoc.Frontend/Components/Pages/Upload.razor,**/Components/Pages/Login.razor,**/Components/Pages/Register.razor,**/Components/Pages/Upload.razor" \
             /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,**/wwwroot/**"
 
-      - name: Build solution
-        run: dotnet build LegalDoc.sln --no-restore --no-incremental --configuration Release
+          echo "=== [2/4] Building solution ==="
+          dotnet build LegalDoc.sln --no-restore --no-incremental --configuration Release
 
-      - name: Run tests with coverage
-        run: |
+          echo "=== [3/4] Running tests with coverage ==="
           dotnet-coverage collect \
             "dotnet test LegalDoc.sln --no-build --configuration Release --verbosity normal" \
             -f xml \
             -o coverage.xml
 
-      - name: End SonarQube Analysis
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+          echo "=== [4/4] Ending SonarScanner ==="
+          dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
 
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v4
