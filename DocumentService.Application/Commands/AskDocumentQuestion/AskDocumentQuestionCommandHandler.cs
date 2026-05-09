@@ -43,8 +43,11 @@ public class AskDocumentQuestionCommandHandler
     public async Task<AskDocumentQuestionResponse> Handle(
         AskDocumentQuestionCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Processing Q&A for document {DocumentId}: \"{Question}\"",
-            request.DocumentId, request.Question);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Processing Q&A for document {DocumentId}: \"{Question}\"",
+                request.DocumentId, request.Question);
+        }
 
         // Save user message
         var userMessage = DocumentService.Domain.Entities.DocumentMessage.Create(
@@ -61,7 +64,10 @@ public class AskDocumentQuestionCommandHandler
         var isIndexed = await _chunkRepository.IsDocumentIndexedAsync(request.DocumentId).ConfigureAwait(false);
         if (!isIndexed)
         {
-            _logger.LogInformation("Document {DocumentId} is not indexed. Starting indexing...", request.DocumentId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Document {DocumentId} is not indexed. Starting indexing...", request.DocumentId);
+            }
             await _mediator.Send(new IndexDocumentCommand(request.DocumentId), cancellationToken).ConfigureAwait(false);
             isNewlyIndexed = true;
         }
@@ -83,7 +89,10 @@ public class AskDocumentQuestionCommandHandler
                 isNewlyIndexed);
         }
 
-        _logger.LogInformation("Found {Count} relevant chunks", searchResults.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Found {Count} relevant chunks", searchResults.Count);
+        }
 
         // Generate answer using LLM
         var contextChunks = searchResults.Select(r => r.Text).ToArray();

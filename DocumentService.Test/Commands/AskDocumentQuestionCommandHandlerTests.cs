@@ -10,6 +10,8 @@ namespace DocumentService.Test.Commands;
 
 public class AskDocumentQuestionCommandHandlerTests
 {
+    private static readonly float[] QuestionEmbedding = [0.1f];
+
     private readonly Mock<IDocumentRepository> _docRepo = new();
     private readonly Mock<IDocumentChunkRepository> _chunkRepo = new();
     private readonly Mock<IDocumentMessageRepository> _msgRepo = new();
@@ -44,7 +46,7 @@ public class AskDocumentQuestionCommandHandlerTests
         _mediator.Setup(m => m.Send(It.IsAny<IndexDocumentCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new IndexDocumentResponse(doc.Id, 1, DateTime.UtcNow));
         _embedding.Setup(s => s.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new float[] { 0.1f });
+            .ReturnsAsync(QuestionEmbedding);
         _chunkRepo.Setup(r => r.SearchSimilarAsync(It.IsAny<Guid>(), It.IsAny<float[]>(), It.IsAny<int>()))
             .ReturnsAsync(new List<DocumentChunkSearchResult> { new(Guid.NewGuid(), 0, "chunk", 0.5) });
         _qa.Setup(s => s.GenerateAnswerAsync(It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>()))
@@ -64,7 +66,7 @@ public class AskDocumentQuestionCommandHandlerTests
         _docRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(doc);
         _chunkRepo.Setup(r => r.IsDocumentIndexedAsync(It.IsAny<Guid>())).ReturnsAsync(true);
         _embedding.Setup(s => s.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new float[] { 0.1f });
+            .ReturnsAsync(QuestionEmbedding);
         _chunkRepo.Setup(r => r.SearchSimilarAsync(It.IsAny<Guid>(), It.IsAny<float[]>(), It.IsAny<int>()))
             .ReturnsAsync(new List<DocumentChunkSearchResult> { new(Guid.NewGuid(), 0, "chunk", 0.5) });
         _qa.Setup(s => s.GenerateAnswerAsync(It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>()))
@@ -83,7 +85,7 @@ public class AskDocumentQuestionCommandHandlerTests
         _docRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(doc);
         _chunkRepo.Setup(r => r.IsDocumentIndexedAsync(It.IsAny<Guid>())).ReturnsAsync(true);
         _embedding.Setup(s => s.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new float[] { 0.1f });
+            .ReturnsAsync(QuestionEmbedding);
         _chunkRepo.Setup(r => r.SearchSimilarAsync(It.IsAny<Guid>(), It.IsAny<float[]>(), It.IsAny<int>()))
             .ReturnsAsync(new List<DocumentChunkSearchResult>());
 

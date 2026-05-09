@@ -95,7 +95,7 @@ public class GetDocumentQueryHandlerTests
             .ReturnsAsync(document);
 
         // Act
-        var response = await _handler.Handle(query, CancellationToken.None).ConfigureAwait(false);
+        var response = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
         Assert.NotNull(response);

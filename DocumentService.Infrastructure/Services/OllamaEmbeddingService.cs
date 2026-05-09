@@ -28,9 +28,12 @@ public class OllamaEmbeddingService : IEmbeddingService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        _logger.LogInformation(
-            "OllamaEmbeddingService initialized. Endpoint: {Endpoint}, Model: {Model}",
-            endpoint, _model);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "OllamaEmbeddingService initialized. Endpoint: {Endpoint}, Model: {Model}",
+                endpoint, _model);
+        }
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
@@ -56,7 +59,10 @@ public class OllamaEmbeddingService : IEmbeddingService
 
             var embedding = response.Embeddings[0];
 
-            _logger.LogDebug("Generated embedding with {Dimensions} dimensions", embedding.Length);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Generated embedding with {Dimensions} dimensions", embedding.Length);
+            }
             return embedding;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)

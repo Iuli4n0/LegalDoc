@@ -12,7 +12,7 @@ using UglyToad.PdfPig;
 
 namespace DocumentService.Infrastructure.Services;
 
-public class TextExtractionService : ITextExtractionService
+public partial class TextExtractionService : ITextExtractionService
 {
     private static readonly string[] SupportedContentTypes =
     [
@@ -35,7 +35,10 @@ public class TextExtractionService : ITextExtractionService
 
     public async Task<string> ExtractTextAsync(Stream fileStream, string contentType)
     {
-        _logger.LogInformation("Extracting text from file with content type: {ContentType}", contentType);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Extracting text from file with content type: {ContentType}", contentType);
+        }
 
         var extractedText = contentType.ToLowerInvariant() switch
         {
@@ -64,7 +67,10 @@ public class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            _logger.LogInformation("Extracted {CharCount} characters from PDF ({PageCount} pages)", text.Length, document.NumberOfPages);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Extracted {CharCount} characters from PDF ({PageCount} pages)", text.Length, document.NumberOfPages);
+            }
             return text;
         }
         catch (Exception ex)
@@ -104,7 +110,10 @@ public class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            _logger.LogInformation("Extracted {CharCount} characters from DOCX", text.Length);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Extracted {CharCount} characters from DOCX", text.Length);
+            }
             return text;
         }
         catch (Exception ex)
@@ -125,13 +134,19 @@ public class TextExtractionService : ITextExtractionService
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
 
-
-        var text = Regex.Replace(input, @"(\w+)[-‐‑]\s*[\r\n]+\s*(\w+)", "$1$2");
-
-        text = Regex.Replace(text, @"[^\S\r\n]+", " ");
-
-        text = Regex.Replace(text, @"(\r?\n){3,}", "\n\n");
+        var text = HyphenLineBreakRegex().Replace(input, "$1$2");
+        text = InlineWhitespaceRegex().Replace(text, " ");
+        text = ExcessNewlinesRegex().Replace(text, "\n\n");
 
         return text.Trim();
     }
+
+    [GeneratedRegex(@"(\w+)[-‐‑]\s*[\r\n]+\s*(\w+)")]
+    private static partial Regex HyphenLineBreakRegex();
+
+    [GeneratedRegex(@"[^\S\r\n]+")]
+    private static partial Regex InlineWhitespaceRegex();
+
+    [GeneratedRegex(@"(\r?\n){3,}")]
+    private static partial Regex ExcessNewlinesRegex();
 }

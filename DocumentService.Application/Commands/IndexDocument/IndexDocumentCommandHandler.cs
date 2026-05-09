@@ -45,7 +45,10 @@ public class IndexDocumentCommandHandler
     public async Task<IndexDocumentResponse> Handle(
         IndexDocumentCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting document indexing for document {DocumentId}", request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Starting document indexing for document {DocumentId}", request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -67,7 +70,10 @@ public class IndexDocumentCommandHandler
 
         // Split into chunks
         var textChunks = SplitIntoChunks(extractedText, DefaultChunkSize, ChunkOverlap);
-        _logger.LogDebug("Text split into {ChunkCount} chunk(s) for indexing", textChunks.Count);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Text split into {ChunkCount} chunk(s) for indexing", textChunks.Count);
+        }
 
         // Generate embeddings and create entities
         var documentChunks = new List<DocumentChunk>();
@@ -75,7 +81,10 @@ public class IndexDocumentCommandHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _logger.LogDebug("Generating embedding for chunk {Current}/{Total}", i + 1, textChunks.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Generating embedding for chunk {Current}/{Total}", i + 1, textChunks.Count);
+            }
             var embedding = await _embeddingService.GenerateEmbeddingAsync(textChunks[i], cancellationToken).ConfigureAwait(false);
             var chunk = DocumentChunk.Create(request.DocumentId, i, textChunks[i], embedding);
             documentChunks.Add(chunk);
@@ -85,9 +94,12 @@ public class IndexDocumentCommandHandler
         await _chunkRepository.AddRangeAsync(documentChunks).ConfigureAwait(false);
 
         var indexedAt = DateTime.UtcNow;
-        _logger.LogInformation(
-            "Document indexing completed for {DocumentId}. {ChunkCount} chunks created.",
-            request.DocumentId, documentChunks.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Document indexing completed for {DocumentId}. {ChunkCount} chunks created.",
+                request.DocumentId, documentChunks.Count);
+        }
 
         return new IndexDocumentResponse(request.DocumentId, documentChunks.Count, indexedAt);
     }

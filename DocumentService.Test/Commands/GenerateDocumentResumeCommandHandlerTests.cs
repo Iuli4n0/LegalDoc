@@ -229,7 +229,7 @@ public class GenerateDocumentResumeCommandHandlerTests
         var before = DateTime.UtcNow;
 
         // Act
-        var response = await _handler.Handle(command, CancellationToken.None).ConfigureAwait(false);
+        var response = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         var after = DateTime.UtcNow;
