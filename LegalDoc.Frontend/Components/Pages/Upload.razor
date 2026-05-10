@@ -25,11 +25,20 @@
     var percentUsed = _limits.MaxDocuments > 0 
         ? (double)_limits.MonthlyDocumentsUploaded / _limits.MaxDocuments * 100 
         : 100;
-    var quotaColor = percentUsed >= 100
-        ? Color.Error
-        : percentUsed >= 80
-            ? Color.Warning
-            : Color.Success;
+    Color quotaColor;
+
+    if (percentUsed >= 100)
+    {
+        quotaColor = Color.Error;
+    }
+    else if (percentUsed >= 80)
+    {
+        quotaColor = Color.Warning;
+    }
+    else
+    {
+        quotaColor = Color.Success;
+    }
 
     <MudCard Class="mb-4">
         <MudCardHeader>

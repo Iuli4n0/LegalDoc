@@ -25,6 +25,7 @@ public class DocumentsController : ControllerBase
 {
     private const int GatewayTimeoutStatusCode = 504;
     private const int InternalServerErrorStatusCode = 500;
+    private const long MaxUploadRequestSizeBytes = 104857600;
     private const string NotFoundMessage = "not found";
 
     private readonly IMediator _mediator;
@@ -37,9 +38,12 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("upload")]
-    [RequestSizeLimit(104857600)]
-    public async Task<ActionResult<UploadDocumentResponse>> UploadDocument(IFormFile file)
+    [RequestSizeLimit(MaxUploadRequestSizeBytes)]
+    public async Task<ActionResult<UploadDocumentResponse>> UploadDocument(IFormFile? file)
     {
+        if (file is null)
+            return BadRequest("File is required.");
+
         if (file.Length == 0)
             return BadRequest("File is empty.");
 

@@ -82,22 +82,17 @@
     private string _password = string.Empty;
     private string? _errorMessage;
 
-    private string? ValidateEmail(string value) 
+    private static string? ValidateEmail(string value) 
     {
         if (string.IsNullOrWhiteSpace(value))
             return "Email is required";
         // Basic email pattern check
-        if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                value,
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                System.Text.RegularExpressions.RegexOptions.None,
+                TimeSpan.FromSeconds(1)))
             return "Invalid email address";
-        return null;
-    }
-
-    private string? ValidatePassword(string value) 
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "Password is required";
-        if (value.Length < 6)
-            return "Password must be at least 6 characters";
         return null;
     }
 

@@ -133,9 +133,9 @@ public class RegisterPageTests : TestContext
 
     private static T InvokePrivate<T>(object instance, string methodName, params object[] args)
     {
-        var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+        var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic)
                      ?? throw new InvalidOperationException($"Method '{methodName}' was not found.");
-        return (T)method.Invoke(instance, args)!;
+        return (T)method.Invoke(method.IsStatic ? null : instance, args)!;
     }
 
     private static void SetPrivateField(object instance, string fieldName, object value)

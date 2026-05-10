@@ -21,6 +21,17 @@ public class DocumentsControllerTests
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock = new();
 
     [Fact]
+    public async Task Given_NullFile_When_UploadDocument_Then_BadRequestIsReturned()
+    {
+        var controller = CreateControllerWithClaims();
+
+        var result = await controller.UploadDocument(null);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("File is required.", badRequest.Value);
+    }
+
+    [Fact]
     public async Task Given_EmptyFile_When_UploadDocument_Then_BadRequestIsReturned()
     {
         var controller = CreateControllerWithClaims();
