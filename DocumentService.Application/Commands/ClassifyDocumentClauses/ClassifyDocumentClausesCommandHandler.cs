@@ -54,7 +54,10 @@ public partial class ClassifyDocumentClausesCommandHandler
         await _clauseRepository.UpdateRangeAsync(clauses, cancellationToken).ConfigureAwait(false);
 
         var classifiedAt = DateTime.UtcNow;
-        LogClassificationCompleted(_logger, request.DocumentId, clauses.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogClassificationCompleted(_logger, request.DocumentId, clauses.Count);
+        }
 
         return new ClassifyDocumentClausesResponse(
             request.DocumentId,

@@ -26,7 +26,10 @@ public partial class GetDocumentConversationQueryHandler : IRequestHandler<GetDo
 
     public async Task<GetDocumentConversationResponse> Handle(GetDocumentConversationQuery request, CancellationToken cancellationToken)
     {
-        LogRetrievingConversation(_logger, request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogRetrievingConversation(_logger, request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)

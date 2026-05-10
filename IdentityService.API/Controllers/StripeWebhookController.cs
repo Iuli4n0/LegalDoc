@@ -35,8 +35,16 @@ public class StripeWebhookController : ControllerBase
             return BadRequest(new { error = "Invalid webhook payload or signature verification failed." });
         }
 
-        // At this point model binding succeeded; stripeEvent should be non-null.
-        _logger.LogInformation("Stripe webhook received: {EventType} ({EventId})", stripeEvent!.Type, stripeEvent.Id);
+        if (stripeEvent is null)
+        {
+            _logger.LogWarning("Stripe webhook model binding completed without an event.");
+            return BadRequest(new { error = "Invalid webhook payload." });
+        }
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Stripe webhook received: {EventType} ({EventId})", stripeEvent.Type, stripeEvent.Id);
+        }
 
         switch (stripeEvent.Type)
         {
@@ -53,11 +61,19 @@ public class StripeWebhookController : ControllerBase
                 break;
 
             case EventTypes.InvoicePaymentFailed:
-                _logger.LogWarning("Invoice payment failed: {EventId}", stripeEvent.Id);
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    _logger.LogWarning("Invoice payment failed: {EventId}", stripeEvent.Id);
+                }
+
                 break;
 
             default:
-                _logger.LogDebug("Unhandled Stripe event type: {EventType}", stripeEvent.Type);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Unhandled Stripe event type: {EventType}", stripeEvent.Type);
+                }
+
                 break;
         }
 
@@ -80,27 +96,43 @@ public class StripeWebhookController : ControllerBase
 
         if (!Guid.TryParse(userId, out var userGuid))
         {
-            _logger.LogWarning("Invalid userId in checkout session metadata: {UserId}", userId);
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning("Invalid userId in checkout session metadata: {UserId}", userId);
+            }
+
             return;
         }
 
         if (!Enum.TryParse<SubscriptionPlan>(planStr, true, out var plan))
         {
-            _logger.LogWarning("Invalid plan in checkout session metadata: {Plan}", planStr);
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning("Invalid plan in checkout session metadata: {Plan}", planStr);
+            }
+
             return;
         }
 
         var user = await _userRepository.GetByIdAsync(userGuid).ConfigureAwait(false);
         if (user is null)
         {
-            _logger.LogWarning("User {UserId} not found during checkout.session.completed", userId);
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning("User {UserId} not found during checkout.session.completed", userId);
+            }
+
             return;
         }
 
         if (plan <= user.SubscriptionPlan)
         {
-            _logger.LogWarning("Ignoring non-upgrade checkout completion for user {UserId}. Current: {CurrentPlan}, Requested: {RequestedPlan}",
-                userId, user.SubscriptionPlan, plan);
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning("Ignoring non-upgrade checkout completion for user {UserId}. Current: {CurrentPlan}, Requested: {RequestedPlan}",
+                    userId, user.SubscriptionPlan, plan);
+            }
+
             return;
         }
 
@@ -129,16 +161,25 @@ public class StripeWebhookController : ControllerBase
                     Prorate = false,
                     InvoiceNow = false
                 }).ConfigureAwait(false);
-                _logger.LogInformation("Cancelled previous Stripe subscription {PreviousSubscriptionId} for user {UserId}", previousSubscriptionId, userId);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Cancelled previous Stripe subscription {PreviousSubscriptionId} for user {UserId}", previousSubscriptionId, userId);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to cancel previous Stripe subscription {PreviousSubscriptionId} for user {UserId}", previousSubscriptionId, userId);
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    _logger.LogWarning(ex, "Failed to cancel previous Stripe subscription {PreviousSubscriptionId} for user {UserId}", previousSubscriptionId, userId);
+                }
             }
         }
 
-        _logger.LogInformation("User {UserId} upgraded to {Plan} plan (subscription: {SubscriptionId})",
-            userId, plan, session.SubscriptionId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("User {UserId} upgraded to {Plan} plan (subscription: {SubscriptionId})",
+                userId, plan, session.SubscriptionId);
+        }
     }
 
     private async Task HandleSubscriptionUpdated(Event stripeEvent)
@@ -149,7 +190,11 @@ public class StripeWebhookController : ControllerBase
         var userId = subscription.Metadata?.GetValueOrDefault("userId");
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
         {
-            _logger.LogDebug("Subscription updated but no userId metadata. Subscription: {SubId}", subscription.Id);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Subscription updated but no userId metadata. Subscription: {SubId}", subscription.Id);
+            }
+
             return;
         }
 
@@ -159,8 +204,12 @@ public class StripeWebhookController : ControllerBase
         if (!string.IsNullOrWhiteSpace(user.StripeSubscriptionId)
             && !string.Equals(subscription.Id, user.StripeSubscriptionId, StringComparison.Ordinal))
         {
-            _logger.LogDebug("Ignoring subscription.updated for non-current subscription {SubscriptionId}. Current is {CurrentSubscriptionId}",
-                subscription.Id, user.StripeSubscriptionId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Ignoring subscription.updated for non-current subscription {SubscriptionId}. Current is {CurrentSubscriptionId}",
+                    subscription.Id, user.StripeSubscriptionId);
+            }
+
             return;
         }
 
@@ -178,9 +227,12 @@ public class StripeWebhookController : ControllerBase
             if (plan > user.SubscriptionPlan)
             {
                 user.UpdateSubscription(plan, subscription.Id);
-                _logger.LogInformation("User {UserId} subscription changed to {Plan}", userId, plan);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("User {UserId} subscription changed to {Plan}", userId, plan);
+                }
             }
-            else if (plan < user.SubscriptionPlan)
+            else if (plan < user.SubscriptionPlan && _logger.IsEnabled(LogLevel.Warning))
             {
                 _logger.LogWarning("Ignoring downgrade subscription update for user {UserId}. Current: {CurrentPlan}, Requested: {RequestedPlan}",
                     userId, user.SubscriptionPlan, plan);
@@ -202,7 +254,7 @@ public class StripeWebhookController : ControllerBase
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
         {
             // Try to find by customer ID
-            if (!string.IsNullOrEmpty(subscription.CustomerId))
+            if (!string.IsNullOrEmpty(subscription.CustomerId) && _logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation("Subscription deleted for customer {CustomerId}, searching by customer ID", subscription.CustomerId);
             }
@@ -215,8 +267,12 @@ public class StripeWebhookController : ControllerBase
         if (!string.IsNullOrWhiteSpace(user.StripeSubscriptionId)
             && !string.Equals(subscription.Id, user.StripeSubscriptionId, StringComparison.Ordinal))
         {
-            _logger.LogInformation("Ignoring delete for old subscription {DeletedSubscriptionId}; current active subscription is {CurrentSubscriptionId}",
-                subscription.Id, user.StripeSubscriptionId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Ignoring delete for old subscription {DeletedSubscriptionId}; current active subscription is {CurrentSubscriptionId}",
+                    subscription.Id, user.StripeSubscriptionId);
+            }
+
             return;
         }
 
@@ -225,7 +281,10 @@ public class StripeWebhookController : ControllerBase
 
         await _userRepository.UpdateAsync(user).ConfigureAwait(false);
 
-        _logger.LogInformation("User {UserId} subscription deleted, reverted to Free plan", userId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("User {UserId} subscription deleted, reverted to Free plan", userId);
+        }
     }
 }
 

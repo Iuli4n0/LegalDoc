@@ -29,7 +29,10 @@ public partial class OllamaQAService : IQAService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        LogInitialized(_logger, endpoint, _model);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogInitialized(_logger, endpoint, _model);
+        }
     }
 
     public async Task<string> GenerateAnswerAsync(string question, string[] contextChunks, CancellationToken cancellationToken = default)
@@ -100,24 +103,40 @@ public partial class OllamaQAService : IQAService
             }
 
             var result = sb.ToString().Trim();
-            LogResponseReceived(_logger, result.Length);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogResponseReceived(_logger, result.Length);
+            }
+
             return result;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             var pullCommand = $"ollama pull {_model}";
-            LogModelMissing(_logger, ex, _model, pullCommand);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogModelMissing(_logger, ex, _model, pullCommand);
+            }
+
             throw new InvalidOperationException(
                 $"Ollama model '{_model}' is not available. Pull it first.", ex);
         }
         catch (OperationCanceledException ex)
         {
-            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            }
+
             throw new TimeoutException($"Q&A request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex)
         {
-            LogFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogFailure(_logger, ex);
+            }
+
             throw new InvalidOperationException($"Failed to generate answer: {ex.Message}", ex);
         }
     }

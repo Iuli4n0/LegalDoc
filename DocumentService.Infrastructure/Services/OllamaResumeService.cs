@@ -34,7 +34,10 @@ public partial class OllamaResumeService : IResumeGeneratorService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        LogInitialized(_logger, endpoint, _model, _chunkSize);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogInitialized(_logger, endpoint, _model, _chunkSize);
+        }
     }
 
     public async Task<ResumeResult> GenerateResumeAsync(string text, CancellationToken cancellationToken = default)
@@ -43,7 +46,10 @@ public partial class OllamaResumeService : IResumeGeneratorService
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 
         var chunks = SplitIntoChunks(text, _chunkSize);
-        LogChunkSplit(_logger, chunks.Count, _chunkSize);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogChunkSplit(_logger, chunks.Count, _chunkSize);
+        }
 
         if (chunks.Count == 1)
         {
@@ -54,12 +60,20 @@ public partial class OllamaResumeService : IResumeGeneratorService
         var partialResumes = new List<string>();
         for (var i = 0; i < chunks.Count; i++)
         {
-            LogChunkProcessing(_logger, i + 1, chunks.Count);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogChunkProcessing(_logger, i + 1, chunks.Count);
+            }
+
             var partialResume = await GenerateChunkResumeAsync(chunks[i], i + 1, chunks.Count, cancellationToken).ConfigureAwait(false);
             partialResumes.Add(partialResume);
         }
 
-        LogCombiningResumes(_logger, partialResumes.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogCombiningResumes(_logger, partialResumes.Count);
+        }
+
         var finalResume = await CombineResumesAsync(partialResumes, cancellationToken).ConfigureAwait(false);
 
         return new ResumeResult(finalResume, chunks.Count);
@@ -150,25 +164,41 @@ public partial class OllamaResumeService : IResumeGeneratorService
             }
 
             var result = sb.ToString().Trim();
-            LogResponseReceived(_logger, result.Length);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogResponseReceived(_logger, result.Length);
+            }
+
             return result;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             var pullCommand = $"ollama pull {_model}";
-            LogModelMissing(_logger, ex, _model, pullCommand);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogModelMissing(_logger, ex, _model, pullCommand);
+            }
+
             throw new InvalidOperationException(
                 $"Ollama model '{_model}' is not available. Pull it first (example: {pullCommand}).",
                 ex);
         }
         catch (OperationCanceledException ex)
         {
-            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            }
+
             throw new TimeoutException($"Ollama request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex)
         {
-            LogFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogFailure(_logger, ex);
+            }
+
             throw new InvalidOperationException($"Failed to communicate with Ollama: {ex.Message}", ex);
         }
     }

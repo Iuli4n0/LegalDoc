@@ -20,6 +20,14 @@
     </MudPaper>
 }
 
+@if (_loading)
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="0">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mr-2"/>
+        <MudText Typo="Typo.body1">Loading document...</MudText>
+    </MudPaper>
+}
+
 @if (_notFound)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
@@ -167,7 +175,7 @@
                                 {
                                     <MudChip Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">Unclassified</MudChip>
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeleteClause(clause.ClauseId))" AriaLabel="Delete Clause"/>
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeleteClause(clause.ClauseId))" aria-label="Delete Clause"/>
                             </div>
                         </MudListItem>
                     }

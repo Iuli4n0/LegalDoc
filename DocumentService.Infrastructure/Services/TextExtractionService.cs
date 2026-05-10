@@ -31,7 +31,10 @@ public partial class TextExtractionService : ITextExtractionService
 
     public async Task<string> ExtractTextAsync(Stream fileStream, string contentType)
     {
-        LogExtractingText(_logger, contentType);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogExtractingText(_logger, contentType);
+        }
 
         var extractedText = contentType.ToLowerInvariant() switch
         {
@@ -60,12 +63,20 @@ public partial class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            LogPdfExtracted(_logger, text.Length, document.NumberOfPages);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogPdfExtracted(_logger, text.Length, document.NumberOfPages);
+            }
+
             return text;
         }
         catch (Exception ex)
         {
-            LogPdfFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogPdfFailure(_logger, ex);
+            }
+
             throw new InvalidOperationException("Failed to extract text from PDF file.", ex);
         }
     }
@@ -100,12 +111,20 @@ public partial class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            LogDocxExtracted(_logger, text.Length);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogDocxExtracted(_logger, text.Length);
+            }
+
             return text;
         }
         catch (Exception ex)
         {
-            LogDocxFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogDocxFailure(_logger, ex);
+            }
+
             throw new InvalidOperationException("Failed to extract text from DOCX file.", ex);
         }
     }

@@ -27,7 +27,10 @@ public partial class OllamaEmbeddingService : IEmbeddingService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        LogInitialized(_logger, endpoint, _model);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogInitialized(_logger, endpoint, _model);
+        }
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
@@ -52,25 +55,41 @@ public partial class OllamaEmbeddingService : IEmbeddingService
                 throw new InvalidOperationException("Ollama returned no embeddings.");
 
             var embedding = response.Embeddings[0];
-            LogEmbeddingGenerated(_logger, embedding.Length);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                LogEmbeddingGenerated(_logger, embedding.Length);
+            }
+
             return embedding;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             var pullCommand = $"ollama pull {_model}";
-            LogModelMissing(_logger, ex, _model, pullCommand);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogModelMissing(_logger, ex, _model, pullCommand);
+            }
+
             throw new InvalidOperationException(
                 $"Ollama embedding model '{_model}' is not available. Pull it first (example: {pullCommand}).",
                 ex);
         }
         catch (OperationCanceledException ex)
         {
-            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            }
+
             throw new TimeoutException($"Embedding request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex) when (ex is not InvalidOperationException and not TimeoutException)
         {
-            LogFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogFailure(_logger, ex);
+            }
+
             throw new InvalidOperationException($"Failed to generate embedding: {ex.Message}", ex);
         }
     }

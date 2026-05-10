@@ -35,7 +35,10 @@ public partial class GenerateDocumentResumeCommandHandler
     public async Task<GenerateDocumentResumeResponse> Handle(
         GenerateDocumentResumeCommand request, CancellationToken cancellationToken)
     {
-        LogResumeStarted(_logger, request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogResumeStarted(_logger, request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -63,7 +66,10 @@ public partial class GenerateDocumentResumeCommandHandler
         await _documentRepository.UpdateAsync(document).ConfigureAwait(false);
 
         var charCount = extractedText.Length;
-        LogResumeCompleted(_logger, request.DocumentId, charCount, resumeResult.ChunksProcessed);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogResumeCompleted(_logger, request.DocumentId, charCount, resumeResult.ChunksProcessed);
+        }
 
         return new GenerateDocumentResumeResponse(
             document.Id,

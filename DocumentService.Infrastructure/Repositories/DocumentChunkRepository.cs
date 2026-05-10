@@ -41,7 +41,10 @@ public partial class DocumentChunkRepository : IDocumentChunkRepository
                 c.Embedding!.CosineDistance(queryVector)))
             .ToListAsync().ConfigureAwait(false);
 
-        LogSimilaritySearch(_logger, documentId, results.Count, topK);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogSimilaritySearch(_logger, documentId, results.Count, topK);
+        }
 
         return results;
     }
@@ -62,7 +65,10 @@ public partial class DocumentChunkRepository : IDocumentChunkRepository
         {
             _context.DocumentChunks.RemoveRange(chunks);
             await _context.SaveChangesAsync().ConfigureAwait(false);
-            LogDeletedChunks(_logger, chunks.Count, documentId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogDeletedChunks(_logger, chunks.Count, documentId);
+            }
         }
     }
 

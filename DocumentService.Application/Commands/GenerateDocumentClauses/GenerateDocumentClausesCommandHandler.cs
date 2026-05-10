@@ -40,7 +40,10 @@ public partial class GenerateDocumentClausesCommandHandler
     public async Task<GenerateDocumentClausesResponse> Handle(
         GenerateDocumentClausesCommand request, CancellationToken cancellationToken)
     {
-        LogClauseExtractionStarted(_logger, request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogClauseExtractionStarted(_logger, request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -76,12 +79,15 @@ public partial class GenerateDocumentClausesCommandHandler
 
         var generatedAt = DateTime.UtcNow;
 
-        LogClauseExtractionCompleted(
-            _logger,
-            request.DocumentId,
-            extractedText.Length,
-            extractionResult.Clauses.Count,
-            extractionResult.ChunksProcessed);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogClauseExtractionCompleted(
+                _logger,
+                request.DocumentId,
+                extractedText.Length,
+                extractionResult.Clauses.Count,
+                extractionResult.ChunksProcessed);
+        }
 
         return new GenerateDocumentClausesResponse(
             document.Id,

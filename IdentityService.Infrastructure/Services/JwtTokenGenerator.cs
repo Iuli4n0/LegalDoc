@@ -17,12 +17,13 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     private const string DefaultAudience = "LegalDoc";
 
     private readonly IConfiguration _configuration;
-    private readonly IHostEnvironment _env;
 
     public JwtTokenGenerator(IConfiguration configuration, IHostEnvironment env)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(env);
+
         _configuration = configuration;
-        _env = env;
     }
 
     public string GenerateToken(User user)

@@ -25,7 +25,10 @@ public class S3FileStorageService : IFileStorageService
         _bucketName = configuration["AWS:BucketName"]
                       ?? throw new InvalidOperationException("AWS:BucketName is not configured.");
 
-        _logger.LogInformation("S3FileStorageService initialized with bucket: {BucketName}", _bucketName);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("S3FileStorageService initialized with bucket: {BucketName}", _bucketName);
+        }
     }
 
     public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType)
@@ -34,7 +37,10 @@ public class S3FileStorageService : IFileStorageService
         {
             var key = $"{Guid.NewGuid()}/{fileName}";
 
-            _logger.LogInformation("Uploading file {FileName} to S3 with key {Key}", fileName, key);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Uploading file {FileName} to S3 with key {Key}", fileName, key);
+            }
 
             var request = new PutObjectRequest
             {
@@ -46,26 +52,37 @@ public class S3FileStorageService : IFileStorageService
 
             var response = await _s3Client.PutObjectAsync(request).ConfigureAwait(false);
 
-            _logger.LogInformation(
-                "Successfully uploaded file {FileName} to S3. Key: {Key}, ETag: {ETag}",
-                fileName,
-                key,
-                response.ETag);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Successfully uploaded file {FileName} to S3. Key: {Key}, ETag: {ETag}",
+                    fileName,
+                    key,
+                    response.ETag);
+            }
 
             return key;
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex,
-                "AWS S3 error uploading file {FileName}. Error Code: {ErrorCode}, Message: {Message}",
-                fileName,
-                ex.ErrorCode,
-                ex.Message);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex,
+                    "AWS S3 error uploading file {FileName}. Error Code: {ErrorCode}, Message: {Message}",
+                    fileName,
+                    ex.ErrorCode,
+                    ex.Message);
+            }
+
             throw new InvalidOperationException($"Failed to upload file to S3: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error uploading file {FileName} to S3", fileName);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Unexpected error uploading file {FileName} to S3", fileName);
+            }
+
             throw new InvalidOperationException($"Unexpected error uploading file: {ex.Message}", ex);
         }
     }
@@ -74,7 +91,10 @@ public class S3FileStorageService : IFileStorageService
     {
         try
         {
-            _logger.LogInformation("Downloading file from S3 with key {Key}", s3Key);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Downloading file from S3 with key {Key}", s3Key);
+            }
 
             var request = new GetObjectRequest
             {
@@ -91,18 +111,29 @@ public class S3FileStorageService : IFileStorageService
             }
             memoryStream.Position = 0;
 
-            _logger.LogInformation("Successfully downloaded file from S3. Key: {Key}, Size: {Size} bytes", s3Key, memoryStream.Length);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Successfully downloaded file from S3. Key: {Key}, Size: {Size} bytes", s3Key, memoryStream.Length);
+            }
 
             return memoryStream;
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "AWS S3 error downloading file with key {Key}. Error Code: {ErrorCode}", s3Key, ex.ErrorCode);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "AWS S3 error downloading file with key {Key}. Error Code: {ErrorCode}", s3Key, ex.ErrorCode);
+            }
+
             throw new InvalidOperationException($"Failed to download file from S3: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error downloading file with key {Key} from S3", s3Key);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Unexpected error downloading file with key {Key} from S3", s3Key);
+            }
+
             throw new InvalidOperationException($"Unexpected error downloading file: {ex.Message}", ex);
         }
     }
@@ -111,7 +142,10 @@ public class S3FileStorageService : IFileStorageService
     {
         try
         {
-            _logger.LogInformation("Deleting file from S3 with key {Key}", s3Key);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Deleting file from S3 with key {Key}", s3Key);
+            }
 
             var request = new DeleteObjectRequest
             {
@@ -121,18 +155,28 @@ public class S3FileStorageService : IFileStorageService
 
             await _s3Client.DeleteObjectAsync(request).ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully deleted file from S3. Key: {Key}", s3Key);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Successfully deleted file from S3. Key: {Key}", s3Key);
+            }
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "AWS S3 error deleting file with key {Key}. Error Code: {ErrorCode}", s3Key, ex.ErrorCode);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "AWS S3 error deleting file with key {Key}. Error Code: {ErrorCode}", s3Key, ex.ErrorCode);
+            }
+
             throw new InvalidOperationException($"Failed to delete file from S3: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error deleting file with key {Key} from S3", s3Key);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Unexpected error deleting file with key {Key} from S3", s3Key);
+            }
+
             throw new InvalidOperationException($"Unexpected error deleting file: {ex.Message}", ex);
         }
     }
 }
-

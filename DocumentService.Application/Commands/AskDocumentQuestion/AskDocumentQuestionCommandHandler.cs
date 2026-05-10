@@ -43,7 +43,10 @@ public partial class AskDocumentQuestionCommandHandler
     public async Task<AskDocumentQuestionResponse> Handle(
         AskDocumentQuestionCommand request, CancellationToken cancellationToken)
     {
-        LogProcessingQA(_logger, request.DocumentId, request.Question);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogProcessingQA(_logger, request.DocumentId, request.Question);
+        }
 
         // Save user message
         var userMessage = DocumentService.Domain.Entities.DocumentMessage.Create(
@@ -60,7 +63,11 @@ public partial class AskDocumentQuestionCommandHandler
         var isIndexed = await _chunkRepository.IsDocumentIndexedAsync(request.DocumentId).ConfigureAwait(false);
         if (!isIndexed)
         {
-            LogDocumentNotIndexed(_logger, request.DocumentId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogDocumentNotIndexed(_logger, request.DocumentId);
+            }
+
             await _mediator.Send(new IndexDocumentCommand(request.DocumentId), cancellationToken).ConfigureAwait(false);
             isNewlyIndexed = true;
         }
@@ -82,7 +89,10 @@ public partial class AskDocumentQuestionCommandHandler
                 isNewlyIndexed);
         }
 
-        LogFoundChunks(_logger, searchResults.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogFoundChunks(_logger, searchResults.Count);
+        }
 
         // Generate answer using LLM
         var contextChunks = searchResults.Select(r => r.Text).ToArray();

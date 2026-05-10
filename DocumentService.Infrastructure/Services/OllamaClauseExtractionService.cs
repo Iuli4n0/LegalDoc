@@ -37,7 +37,10 @@ public partial class OllamaClauseExtractionService : IClauseExtractorService
 
         _ollamaClient = new OllamaApiClient(httpClient);
 
-        LogInitialized(_logger, endpoint, _model);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogInitialized(_logger, endpoint, _model);
+        }
     }
 
     public async Task<ClauseExtractionResult> ExtractClausesAsync(string text, CancellationToken cancellationToken = default)
@@ -46,13 +49,20 @@ public partial class OllamaClauseExtractionService : IClauseExtractorService
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 
         var chunks = SplitIntoChunks(text, _chunkSize);
-        LogChunkSplit(_logger, chunks.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogChunkSplit(_logger, chunks.Count);
+        }
 
         var allClauses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < chunks.Count; i++)
         {
-            LogChunkProcessing(_logger, i + 1, chunks.Count);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                LogChunkProcessing(_logger, i + 1, chunks.Count);
+            }
+
             var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken).ConfigureAwait(false);
             var parsedClauses = ParseClauses(rawResponse);
 
@@ -110,12 +120,20 @@ public partial class OllamaClauseExtractionService : IClauseExtractorService
         }
         catch (OperationCanceledException ex)
         {
-            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogTimeout(_logger, ex, DefaultTimeoutSeconds);
+            }
+
             return string.Empty;
         }
         catch (Exception ex)
         {
-            LogFailure(_logger, ex);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                LogFailure(_logger, ex);
+            }
+
             return string.Empty;
         }
     }

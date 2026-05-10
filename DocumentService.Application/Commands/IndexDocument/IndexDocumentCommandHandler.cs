@@ -45,7 +45,10 @@ public partial class IndexDocumentCommandHandler
     public async Task<IndexDocumentResponse> Handle(
         IndexDocumentCommand request, CancellationToken cancellationToken)
     {
-        LogIndexingStarted(_logger, request.DocumentId);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogIndexingStarted(_logger, request.DocumentId);
+        }
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -67,7 +70,10 @@ public partial class IndexDocumentCommandHandler
 
         // Split into chunks
         var textChunks = SplitIntoChunks(extractedText, DefaultChunkSize, ChunkOverlap);
-        LogTextSplit(_logger, textChunks.Count);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            LogTextSplit(_logger, textChunks.Count);
+        }
 
         // Generate embeddings and create entities
         var documentChunks = new List<DocumentChunk>();
@@ -75,7 +81,11 @@ public partial class IndexDocumentCommandHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            LogGeneratingEmbedding(_logger, i + 1, textChunks.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                LogGeneratingEmbedding(_logger, i + 1, textChunks.Count);
+            }
+
             var embedding = await _embeddingService.GenerateEmbeddingAsync(textChunks[i], cancellationToken).ConfigureAwait(false);
             var chunk = DocumentChunk.Create(request.DocumentId, i, textChunks[i], embedding);
             documentChunks.Add(chunk);
@@ -85,7 +95,10 @@ public partial class IndexDocumentCommandHandler
         await _chunkRepository.AddRangeAsync(documentChunks).ConfigureAwait(false);
 
         var indexedAt = DateTime.UtcNow;
-        LogIndexingCompleted(_logger, request.DocumentId, documentChunks.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogIndexingCompleted(_logger, request.DocumentId, documentChunks.Count);
+        }
 
         return new IndexDocumentResponse(request.DocumentId, documentChunks.Count, indexedAt);
     }
