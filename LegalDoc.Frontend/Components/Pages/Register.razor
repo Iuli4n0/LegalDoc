@@ -107,7 +107,7 @@
     private string _confirmPassword = string.Empty;
     private string? _errorMessage;
 
-    private string? ValidateEmail(string email)
+    private static string? ValidateEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             return "Email is required";
@@ -116,7 +116,7 @@
         return null;
     }
 
-    private string? ValidatePassword(string password)
+    private static string? ValidatePassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
             return "Password is required";

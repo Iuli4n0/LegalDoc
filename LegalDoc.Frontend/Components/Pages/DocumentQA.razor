@@ -287,9 +287,8 @@
 
     private async Task LoadDocument(Guid id)
     {
-        if (!_authReady || !AuthState.IsAuthenticated)
+        if (!CanLoadDocument(id))
         {
-            _pendingDocumentId = id;
             return;
         }
 
@@ -298,50 +297,8 @@
         try
         {
             var client = ApiClient.CreateClient();
-
-            // Load document info
             var response = await client.GetAsync($"/api/documents/{id}");
-            if (response.IsSuccessStatusCode)
-            {
-                _document = await response.Content.ReadFromJsonAsync<GetDocumentResponse>();
-
-                // Load Q&A history
-                var historyResponse = await client.GetAsync($"/api/documents/{id}/qa-history");
-                if (historyResponse.IsSuccessStatusCode)
-                {
-                    var history = await historyResponse.Content.ReadFromJsonAsync<GetDocumentConversationResponse>();
-                    if (history?.Messages is not null)
-                    {
-                        _messages.Clear();
-                        foreach (var msg in history.Messages)
-                        {
-                            List<SourceChunkItem>? sources = null;
-                            if (!string.IsNullOrEmpty(msg.SourcesJson))
-                            {
-                                try
-                                {
-                                    sources = System.Text.Json.JsonSerializer.Deserialize<List<SourceChunkItem>>(
-                                        msg.SourcesJson, 
-                                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                                }
-                                catch { }
-                            }
-                            
-                            _messages.Add(new ChatMessage
-                            {
-                                IsUser = msg.IsUser,
-                                Text = msg.Text,
-                                Sources = sources
-                            });
-                        }
-                    }
-                }
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                Snackbar.Add("Document not found.", Severity.Warning);
-                Navigation.NavigateTo("/profile");
-            }
+            await HandleDocumentLoadResponseAsync(client, id, response).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -350,6 +307,81 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private bool CanLoadDocument(Guid id)
+    {
+        if (_authReady && AuthState.IsAuthenticated)
+        {
+            return true;
+        }
+
+        _pendingDocumentId = id;
+        return false;
+    }
+
+    private async Task HandleDocumentLoadResponseAsync(HttpClient client, Guid id, HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Snackbar.Add("Document not found.", Severity.Warning);
+            Navigation.NavigateTo("/profile");
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        _document = await response.Content.ReadFromJsonAsync<GetDocumentResponse>().ConfigureAwait(false);
+        await LoadConversationHistoryAsync(client, id).ConfigureAwait(false);
+    }
+
+    private async Task LoadConversationHistoryAsync(HttpClient client, Guid id)
+    {
+        var historyResponse = await client.GetAsync($"/api/documents/{id}/qa-history").ConfigureAwait(false);
+        if (!historyResponse.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var history = await historyResponse.Content.ReadFromJsonAsync<GetDocumentConversationResponse>().ConfigureAwait(false);
+        if (history?.Messages is null)
+        {
+            return;
+        }
+
+        _messages.Clear();
+        foreach (var msg in history.Messages)
+        {
+            _messages.Add(new ChatMessage
+            {
+                IsUser = msg.IsUser,
+                Text = msg.Text,
+                Sources = TryParseSources(msg.SourcesJson)
+            });
+        }
+    }
+
+    private static List<SourceChunkItem>? TryParseSources(string? sourcesJson)
+    {
+        if (string.IsNullOrEmpty(sourcesJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<SourceChunkItem>>(
+                sourcesJson,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Ignore malformed or legacy source payloads; the conversation can still render without sources.
+            return null;
         }
     }
 
@@ -428,12 +460,12 @@
     }
 
 
-    private void ToggleSources(ChatMessage msg)
+    private static void ToggleSources(ChatMessage msg)
     {
         msg.ShowSources = !msg.ShowSources;
     }
 
-    private class ChatMessage
+    private sealed class ChatMessage
     {
         public bool IsUser { get; set; }
         public string Text { get; set; } = string.Empty;

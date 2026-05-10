@@ -25,6 +25,11 @@
     var percentUsed = _limits.MaxDocuments > 0 
         ? (double)_limits.MonthlyDocumentsUploaded / _limits.MaxDocuments * 100 
         : 100;
+    var quotaColor = percentUsed >= 100
+        ? Color.Error
+        : percentUsed >= 80
+            ? Color.Warning
+            : Color.Success;
 
     <MudCard Class="mb-4">
         <MudCardHeader>
@@ -44,7 +49,7 @@
                     <MudText Typo="Typo.body1">
                         Documents this month: <strong>@_limits.MonthlyDocumentsUploaded / @_limits.MaxDocuments</strong>
                     </MudText>
-                    <MudProgressLinear Color="@(percentUsed >= 100 ? Color.Error : percentUsed >= 80 ? Color.Warning : Color.Success)" 
+                    <MudProgressLinear Color="@quotaColor" 
                                        Value="@percentUsed" 
                                        Class="my-2" />
                     <MudText Typo="Typo.caption" Color="Color.Secondary">

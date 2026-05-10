@@ -82,7 +82,7 @@
     private string _password = string.Empty;
     private string? _errorMessage;
 
-    private string? ValidateEmail(string email)
+    private static string? ValidateEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             return "Email is required";

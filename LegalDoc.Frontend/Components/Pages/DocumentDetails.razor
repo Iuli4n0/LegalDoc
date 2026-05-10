@@ -267,7 +267,7 @@
     private int? _clausesChunksProcessed;
     private bool _clausesExtractionAttempted;
     
-    private HashSet<Guid> _selectedClauses = [];
+    private readonly HashSet<Guid> _selectedClauses = [];
     private bool _workingOnClauses;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
