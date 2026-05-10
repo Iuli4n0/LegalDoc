@@ -3,21 +3,21 @@ using System.Collections.Generic;
 
 namespace LegalDoc.Frontend.Models;
 
-internal record AskQuestionRequest(string Question);
+public record AskQuestionRequest(string Question);
 
-internal record AskQuestionResponse(
+public record AskQuestionResponse(
     string Answer,
     List<SourceChunkItem> SourceChunks,
     bool IsNewlyIndexed
 );
 
-internal record SourceChunkItem(int ChunkIndex, string Text, double Distance);
+public record SourceChunkItem(int ChunkIndex, string Text, double Distance);
 
-internal record IndexDocumentResponse(Guid DocumentId, int ChunksCreated, DateTime IndexedAt);
+public record IndexDocumentResponse(Guid DocumentId, int ChunksCreated, DateTime IndexedAt);
 
-internal record GetDocumentConversationResponse(List<DocumentMessageDto> Messages);
+public record GetDocumentConversationResponse(List<DocumentMessageDto> Messages);
 
-internal record DocumentMessageDto(
+public record DocumentMessageDto(
     Guid Id,
     bool IsUser,
     string Text,

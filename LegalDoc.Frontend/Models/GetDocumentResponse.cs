@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-internal record GetDocumentResponse(
+public record GetDocumentResponse(
     Guid Id,
     string UserId,
     string FileName,

@@ -8,12 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Stripe;
 
-// Load .env file from solution root (two levels up from bin/Debug)
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
-if (System.IO.File.Exists(envPath))
-    DotNetEnv.Env.Load(envPath);
-else if (System.IO.File.Exists(".env"))
-    DotNetEnv.Env.Load();
+LoadDotEnvIfPresent();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,9 +77,18 @@ if (!string.IsNullOrEmpty(stripeSecretKey))
     StripeConfiguration.ApiKey = stripeSecretKey;
 }
 
-// JWT Authentication
+// JWT Authentication - read from configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? jwtSettings["Secret"]
+    ?? throw new InvalidOperationException("JWT Secret not configured. Set JwtSettings:Secret or JWT_SECRET environment variable.");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+    ?? jwtSettings["Issuer"]
+    ?? defaultIssuer;
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+    ?? jwtSettings["Audience"]
+    ?? defaultAudience;
+Console.WriteLine($"[IdentityService] JWT Config: Issuer={jwtIssuer}, Audience={jwtAudience}, SecretLen={jwtSecret.Length}");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -99,9 +103,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"] ?? defaultIssuer,
-        ValidAudience = jwtSettings["Audience"] ?? defaultAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
 });
@@ -138,3 +142,27 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 
 await app.RunAsync().ConfigureAwait(false);
+
+static void LoadDotEnvIfPresent()
+{
+    var cwd = Directory.GetCurrentDirectory();
+    var candidates = new[]
+    {
+        Path.Combine(cwd, ".env"),
+        Path.Combine(cwd, "..", ".env"),
+        Path.Combine(AppContext.BaseDirectory, ".env"),
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".env")
+    };
+
+    foreach (var candidate in candidates)
+    {
+        var fullPath = Path.GetFullPath(candidate);
+        if (!System.IO.File.Exists(fullPath))
+        {
+            continue;
+        }
+
+        DotNetEnv.Env.Load(fullPath);
+        return;
+    }
+}

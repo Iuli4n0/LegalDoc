@@ -14,7 +14,7 @@ namespace IdentityService.API.Controllers;
 
 [ApiController]
 [Route("api/stripe")]
-internal class StripeWebhookController : ControllerBase
+public class StripeWebhookController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;

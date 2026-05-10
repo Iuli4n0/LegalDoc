@@ -333,15 +333,16 @@ else
         ["Gold"] = 200
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         AuthState.OnChange += HandleAuthStateChanged;
-        await AuthService.InitializeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        await AuthService.InitializeAsync();
 
         _authReady = true;
         StateHasChanged();

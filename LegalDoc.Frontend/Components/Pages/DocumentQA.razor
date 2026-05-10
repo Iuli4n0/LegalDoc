@@ -251,14 +251,11 @@
     private Guid? _pendingDocumentId;
     private readonly List<ChatMessage> _messages = [];
 
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.InitializeAsync();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        await AuthService.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)
         {

@@ -53,15 +53,11 @@
 @code {
     private bool _subscriptionVerified;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.InitializeAsync();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
+        await AuthService.InitializeAsync();
         await VerifySubscriptionAsync();
     }
 

@@ -160,15 +160,13 @@
     private bool _authReady;
     private UploadDocumentResponse? _uploadResult;
     private UserLimitsResponse? _limits;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.InitializeAsync();
-    }
+    private readonly TaskCompletionSource _authInitialized = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        await AuthService.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)
         {
@@ -177,6 +175,7 @@
         }
 
         _authReady = true;
+        _authInitialized.TrySetResult();
         StateHasChanged();
         
         await LoadLimits();
@@ -186,6 +185,7 @@
     {
         try
         {
+            await _authInitialized.Task;
             var identityClient = ApiClient.CreateIdentityClient();
             var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(AuthState.Token);
             var userId = jwt.Claims.First(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier || c.Type == "sub").Value;

@@ -72,6 +72,7 @@
 
 @code {
     private bool _drawerOpen = true;
+    private bool _authInitDone;
 
     private readonly MudTheme _theme = new()
     {
@@ -144,9 +145,14 @@
         AuthState.OnChange += HandleAuthStateChanged;
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender || _authInitDone)
+            return;
+
+        _authInitDone = true;
         await AuthService.InitializeAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleAuthStateChanged()

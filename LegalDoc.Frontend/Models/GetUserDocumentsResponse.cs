@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-internal record GetUserDocumentsResponse(
+public record GetUserDocumentsResponse(
     List<GetDocumentResponse> Items,
     int TotalCount
 );

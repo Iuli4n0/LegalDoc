@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LegalDoc.Frontend.Models;
 
-internal record AdminUserDto(
+public record AdminUserDto(
     Guid Id,
     string Email,
     string FullName,
@@ -18,15 +18,15 @@ internal record AdminUserDto(
     DateTime CurrentPeriodEnd
 );
 
-internal record GetAllUsersResponse(IEnumerable<AdminUserDto> Users);
+public record GetAllUsersResponse(IEnumerable<AdminUserDto> Users);
 
-internal class UpdateUserLimitsRequest
+public class UpdateUserLimitsRequest
 {
     public int MaxDocuments { get; set; }
     public int MaxDocumentSizeMb { get; set; }
 }
 
-internal record UserLimitsResponse(
+public record UserLimitsResponse(
     int TotalDocumentsUploaded,
     int MaxDocuments,
     int MaxDocumentSizeMb,

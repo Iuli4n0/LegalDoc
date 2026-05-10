@@ -1,19 +1,19 @@
 namespace LegalDoc.Frontend.Models;
 
-internal class LoginRequest
+public class LoginRequest
 {
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
 
-internal class RegisterRequest
+public class RegisterRequest
 {
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
 }
 
-internal record LoginResponse(
+public record LoginResponse(
     Guid UserId,
     string Email,
     string FullName,
@@ -21,7 +21,7 @@ internal record LoginResponse(
     DateTime ExpiresAt
 );
 
-internal record RegisterResponse(
+public record RegisterResponse(
     Guid Id,
     string Email,
     string FullName,

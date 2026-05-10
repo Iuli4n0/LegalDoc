@@ -35,6 +35,7 @@ public class ApiClient
     private void ApplyAuth(HttpClient client)
     {
         var token = _authState.Token;
+        Console.WriteLine($"[ApiClient] ApplyAuth: IsAuthenticated={_authState.IsAuthenticated}, TokenNull={token is null}, TokenLen={token?.Length ?? 0}");
         if (!string.IsNullOrEmpty(token))
         {
             client.DefaultRequestHeaders.Authorization =

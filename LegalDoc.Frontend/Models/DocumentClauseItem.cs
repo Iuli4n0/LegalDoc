@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-internal record DocumentClauseItem(
+public record DocumentClauseItem(
     Guid ClauseId,
     string Text,
     bool? IsAbusive,

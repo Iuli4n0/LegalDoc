@@ -6,14 +6,11 @@
 @inject NavigationManager Navigation
 
 @code {
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.InitializeAsync();
-    }
-
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        await AuthService.InitializeAsync();
 
         if (AuthState.IsAuthenticated)
             Navigation.NavigateTo("/profile", forceLoad: false);

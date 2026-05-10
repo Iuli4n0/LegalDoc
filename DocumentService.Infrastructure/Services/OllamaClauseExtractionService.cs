@@ -131,7 +131,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
         }
     }
 
-    internal static List<string> ParseClauses(string rawResponse)
+    public static List<string> ParseClauses(string rawResponse)
     {
         var clauses = new List<string>();
         if (string.IsNullOrWhiteSpace(rawResponse))
@@ -159,7 +159,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
         return clauses;
     }
 
-    internal static List<string> SplitIntoChunks(string text, int chunkSize)
+    public static List<string> SplitIntoChunks(string text, int chunkSize)
     {
         var chunks = new List<string>();
         var span = text.AsSpan();

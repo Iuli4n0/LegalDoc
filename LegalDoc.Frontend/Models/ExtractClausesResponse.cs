@@ -1,6 +1,6 @@
 namespace LegalDoc.Frontend.Models;
 
-internal record ExtractClausesResponse(
+public record ExtractClausesResponse(
     Guid DocumentId,
     IReadOnlyList<DocumentClauseItem> Clauses,
     DateTime GeneratedAt,

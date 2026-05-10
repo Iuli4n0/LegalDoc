@@ -1,3 +1,4 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -24,12 +25,22 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public string GenerateToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
-        var issuer = jwtSettings["Issuer"] ?? DefaultIssuer;
-        var audience = jwtSettings["Audience"] ?? DefaultAudience;
-        var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? DefaultExpirationMinutes.ToString());
+        var keyStr = Environment.GetEnvironmentVariable("JWT_SECRET")
+            ?? jwtSettings["Secret"]
+            ?? jwtSettings["Key"]
+            ?? throw new InvalidOperationException("JWT Secret not configured");
+        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+            ?? jwtSettings["Issuer"]
+            ?? DefaultIssuer;
+        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+            ?? jwtSettings["Audience"]
+            ?? DefaultAudience;
+        var expirationRaw = Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES")
+            ?? jwtSettings["ExpirationMinutes"]
+            ?? DefaultExpirationMinutes.ToString();
+        var expirationMinutes = int.Parse(expirationRaw);
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]

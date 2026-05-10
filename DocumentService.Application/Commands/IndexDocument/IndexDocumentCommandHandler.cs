@@ -104,7 +104,7 @@ public class IndexDocumentCommandHandler
         return new IndexDocumentResponse(request.DocumentId, documentChunks.Count, indexedAt);
     }
 
-    internal static List<string> SplitIntoChunks(string text, int chunkSize, int overlap)
+    public static List<string> SplitIntoChunks(string text, int chunkSize, int overlap)
     {
         var chunks = new List<string>();
         var currentIndex = 0;

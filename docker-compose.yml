@@ -81,10 +81,10 @@ services:
       Stripe__Prices__Bronze: ${STRIPE_PRICE_BRONZE}
       Stripe__Prices__Silver: ${STRIPE_PRICE_SILVER}
       Stripe__Prices__Gold: ${STRIPE_PRICE_GOLD}
-      Stripe__SuccessUrl: "http://localhost:8080/subscription/success"
-      Stripe__CancelUrl: "http://localhost:8080/subscription/cancel"
-      Stripe__PortalReturnUrl: "http://localhost:8080/pricing"
-      CorsOrigins: "http://localhost:8080,http://frontend:8080"
+      Stripe__SuccessUrl: "${FRONTEND_URL:-http://localhost:8080}/subscription/success"
+      Stripe__CancelUrl: "${FRONTEND_URL:-http://localhost:8080}/subscription/cancel"
+      Stripe__PortalReturnUrl: "${FRONTEND_URL:-http://localhost:8080}/pricing"
+      CorsOrigins: "http://localhost:8080,http://frontend:8080,${FRONTEND_URL:-http://localhost:8080}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,7 +121,7 @@ services:
       Ollama__ChunkSize: "${OLLAMA_CHUNK_SIZE:-8000}"
       Ollama__EmbeddingModel: "${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}"
       Classifier__BaseUrl: "http://classifier:8000"
-      CorsOrigins: "http://localhost:8080,http://frontend:8080"
+      CorsOrigins: "http://localhost:8080,http://frontend:8080,${FRONTEND_URL:-http://localhost:8080}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -188,6 +188,16 @@ services:
       timeout: 10s
       retries: 5
       start_period: 45s
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: legaldoc-stripe-cli
+    env_file: .env
+    command: "listen --api-key ${STRIPE_SECRET_KEY} --forward-to http://identity-service:8080/api/stripe/webhook --skip-verify"
+    restart: unless-stopped
+    depends_on:
+      identity-service:
+        condition: service_healthy
 
 volumes:
   postgres-data:

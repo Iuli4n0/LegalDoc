@@ -4,7 +4,7 @@ using LegalDoc.Frontend.Models;
 
 namespace LegalDoc.Frontend.Services;
 
-internal class AuthService
+public class AuthService
 {
     private const string AuthTokenKey = "authToken";
     private const string UserNameKey = "userName";
@@ -102,10 +102,13 @@ internal class AuthService
     {
         try
         {
+            Console.WriteLine("[AuthService] InitializeAsync called");
             var tokenResult = await _authStorage.GetAsync(AuthTokenKey).ConfigureAwait(false);
             var nameResult = await _authStorage.GetAsync(UserNameKey).ConfigureAwait(false);
             var emailResult = await _authStorage.GetAsync(UserEmailKey).ConfigureAwait(false);
             var roleResult = await _authStorage.GetAsync(UserRoleKey).ConfigureAwait(false);
+
+            Console.WriteLine($"[AuthService] tokenResult.Success={tokenResult.Success}, hasValue={!string.IsNullOrEmpty(tokenResult.Value)}");
 
             if (tokenResult.Success && !string.IsNullOrEmpty(tokenResult.Value))
             {
@@ -115,14 +118,17 @@ internal class AuthService
                     emailResult.Success ? emailResult.Value ?? "" : "",
                     tokenResult.Value,
                     role);
+                Console.WriteLine($"[AuthService] SetAuthenticated done. Token length={tokenResult.Value.Length}, IsAuthenticated={_authState.IsAuthenticated}");
             }
             else
             {
+                Console.WriteLine("[AuthService] No token found, calling SetLoggedOut");
                 _authState.SetLoggedOut();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[AuthService] InitializeAsync EXCEPTION: {ex.GetType().Name}: {ex.Message}");
             _authState.SetLoggedOut();
         }
     }

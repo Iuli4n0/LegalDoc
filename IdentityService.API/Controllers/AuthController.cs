@@ -20,7 +20,7 @@ namespace IdentityService.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-internal class AuthController : ControllerBase
+public class AuthController : ControllerBase
 {
     private const int InternalServerErrorStatusCode = 500;
 
@@ -359,12 +359,12 @@ internal class AuthController : ControllerBase
 }
 
 // Request DTOs
-internal record RegisterRequest(string Email, string Password, string FullName);
-internal record LoginRequest(string Email, string Password);
-internal record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);
-internal record CreateCheckoutRequest(string Plan);
-internal record SyncCheckoutSessionRequest(string SessionId);
-internal record SyncCheckoutSessionResponse(
+public record RegisterRequest(string Email, string Password, string FullName);
+public record LoginRequest(string Email, string Password);
+public record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);
+public record CreateCheckoutRequest(string Plan);
+public record SyncCheckoutSessionRequest(string SessionId);
+public record SyncCheckoutSessionResponse(
     string SubscriptionPlan,
     int MaxDocuments,
     int MaxDocumentSizeMb,

@@ -21,7 +21,7 @@ namespace DocumentService.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-internal class DocumentsController : ControllerBase
+public class DocumentsController : ControllerBase
 {
     private const int GatewayTimeoutStatusCode = 504;
     private const int InternalServerErrorStatusCode = 500;
@@ -566,9 +566,9 @@ internal class DocumentsController : ControllerBase
 }
 
 // DTO for IdentityService limits response
-internal record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);
+public record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int MaxDocumentSizeMb, bool CanUpload);
 
-internal record AskQuestionRequest(string Question);
+public record AskQuestionRequest(string Question);
 
-internal record AddClauseRequest(string Text);
-internal record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);
+public record AddClauseRequest(string Text);
+public record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);

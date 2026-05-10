@@ -138,15 +138,15 @@ else
     private MudTable<GetDocumentResponse>? _table;
     private bool _authReady;
     private Guid? _downloadingId;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthService.InitializeAsync();
-    }
+    private readonly TaskCompletionSource _authInitialized = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        // Initialize auth here (not in OnInitializedAsync) because ProtectedLocalStorage
+        // requires JS interop, which is only available after the first render.
+        await AuthService.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)
         {
@@ -155,12 +155,16 @@ else
         }
 
         _authReady = true;
+        _authInitialized.TrySetResult();
         StateHasChanged();
     }
 
     private async Task<TableData<GetDocumentResponse>> LoadServerData(TableState state, CancellationToken ct)
     {
-        if (!_authReady || !AuthState.IsAuthenticated)
+        // Wait until OnAfterRenderAsync has confirmed auth before making any request
+        await _authInitialized.Task.WaitAsync(ct);
+
+        if (!AuthState.IsAuthenticated)
             return new TableData<GetDocumentResponse> { Items = [], TotalItems = 0 };
 
         try
@@ -183,6 +187,11 @@ else
                 Items = result.Items,
                 TotalItems = result.TotalCount
             };
+        }
+        catch (HttpRequestException ex)
+        {
+            Snackbar.Add($"Cannot reach DocumentService ({ex.Message}). Start backend on http://localhost:5163.", Severity.Error);
+            return new TableData<GetDocumentResponse> { Items = [], TotalItems = 0 };
         }
         catch (Exception ex)
         {

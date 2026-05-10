@@ -71,5 +71,42 @@ public class JwtTokenGeneratorTests
         Assert.Equal("LegalDoc", jwt.Issuer);
         Assert.Contains(jwt.Audiences, audience => audience == "LegalDoc");
     }
-}
 
+    [Fact]
+    public void Given_SecretAndLegacyKey_When_GenerateTokenIsCalled_Then_ShouldPreferSecret()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["JwtSettings:Secret"] = "this_is_the_secret_used_by_token_validation_12345",
+                ["JwtSettings:Key"] = "legacy_key_that_must_not_sign_new_tokens_12345",
+                ["JwtSettings:Issuer"] = "TestIssuer",
+                ["JwtSettings:Audience"] = "TestAudience"
+            })
+            .Build();
+
+        var generator = new JwtTokenGenerator(config);
+        var user = User.Create("test@example.com", "hash", "Ion Popescu");
+
+        var token = generator.GenerateToken(user);
+
+        var handler = new JwtSecurityTokenHandler();
+        var validationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "TestIssuer",
+            ValidAudience = "TestAudience",
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes("this_is_the_secret_used_by_token_validation_12345"))
+        };
+
+        var principal = handler.ValidateToken(token, validationParameters, out _);
+
+        var subject = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        Assert.Equal(user.Id.ToString(), subject);
+    }
+}
