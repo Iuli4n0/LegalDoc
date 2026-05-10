@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -11,7 +6,7 @@ using OllamaSharp;
 
 namespace DocumentService.Infrastructure.Services;
 
-public class OllamaClauseExtractionService : IClauseExtractorService
+public partial class OllamaClauseExtractionService : IClauseExtractorService
 {
     private const int DefaultChunkSize = 2000;
     private const int DefaultTimeoutSeconds = 600;
@@ -25,8 +20,11 @@ public class OllamaClauseExtractionService : IClauseExtractorService
 
     public OllamaClauseExtractionService(HttpClient httpClient, IConfiguration configuration, ILogger<OllamaClauseExtractionService> logger)
     {
-        _logger = logger;
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(logger);
 
+        _logger = logger;
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
         _model = configuration["Ollama:Model"] ?? "llama3.1:latest";
@@ -39,10 +37,7 @@ public class OllamaClauseExtractionService : IClauseExtractorService
 
         _ollamaClient = new OllamaApiClient(httpClient);
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("OllamaClauseExtractionService initialized. Endpoint: {Endpoint}, Model: {Model}", endpoint, _model);
-        }
+        LogInitialized(_logger, endpoint, _model);
     }
 
     public async Task<ClauseExtractionResult> ExtractClausesAsync(string text, CancellationToken cancellationToken = default)
@@ -51,19 +46,13 @@ public class OllamaClauseExtractionService : IClauseExtractorService
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 
         var chunks = SplitIntoChunks(text, _chunkSize);
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Text split into {ChunkCount} chunk(s).", chunks.Count);
-        }
+        LogChunkSplit(_logger, chunks.Count);
 
         var allClauses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < chunks.Count; i++)
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
-            }
+            LogChunkProcessing(_logger, i + 1, chunks.Count);
             var rawResponse = await ExtractChunkClausesAsync(chunks[i], cancellationToken).ConfigureAwait(false);
             var parsedClauses = ParseClauses(rawResponse);
 
@@ -121,12 +110,12 @@ public class OllamaClauseExtractionService : IClauseExtractorService
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogError(ex, "Ollama request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
+            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
             return string.Empty;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to extract clauses from Ollama.");
+            LogFailure(_logger, ex);
             return string.Empty;
         }
     }
@@ -185,4 +174,19 @@ public class OllamaClauseExtractionService : IClauseExtractorService
 
         return chunks;
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "OllamaClauseExtractionService initialized. Endpoint: {Endpoint}, Model: {Model}")]
+    private static partial void LogInitialized(ILogger logger, string endpoint, string model);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Text split into {ChunkCount} chunk(s).")]
+    private static partial void LogChunkSplit(ILogger logger, int chunkCount);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Processing chunk {Current}/{Total}")]
+    private static partial void LogChunkProcessing(ILogger logger, int current, int total);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Ollama request timed out after {TimeoutSeconds} seconds")]
+    private static partial void LogTimeout(ILogger logger, Exception exception, int timeoutSeconds);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Failed to extract clauses from Ollama.")]
+    private static partial void LogFailure(ILogger logger, Exception exception);
 }

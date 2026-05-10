@@ -13,7 +13,7 @@ public class UserRepositoryAndDbContextTests
         await using var dbContext = CreateDbContext();
         var user = User.Create("user@test.com", "hash", "Test User");
         dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync();
 
         var repository = new UserRepository(dbContext);
 
@@ -40,7 +40,7 @@ public class UserRepositoryAndDbContextTests
         await using var dbContext = CreateDbContext();
         var user = User.Create("user@test.com", "hash", "Test User");
         dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync();
 
         var repository = new UserRepository(dbContext);
 
@@ -59,7 +59,7 @@ public class UserRepositoryAndDbContextTests
 
         await repository.AddAsync(user);
 
-        var persisted = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == user.Id).ConfigureAwait(false);
+        var persisted = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
         Assert.NotNull(persisted);
     }
 
@@ -69,14 +69,14 @@ public class UserRepositoryAndDbContextTests
         await using var dbContext = CreateDbContext();
         var user = User.Create("user@test.com", "hash", "Test User");
         dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync();
 
         var repository = new UserRepository(dbContext);
         user.UpdateLastLogin();
 
         await repository.UpdateAsync(user);
 
-        var persisted = await dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id).ConfigureAwait(false);
+        var persisted = await dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
         Assert.NotNull(persisted.LastLoginAt);
     }
 
@@ -85,7 +85,7 @@ public class UserRepositoryAndDbContextTests
     {
         await using var dbContext = CreateDbContext();
         dbContext.Users.Add(User.Create("exists@test.com", "hash", "Exists User"));
-        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync();
 
         var repository = new UserRepository(dbContext);
 

@@ -1,4 +1,3 @@
-using System.Net.Http;
 using System.Security.Claims;
 using DocumentService.API.Controllers;
 using DocumentService.Application.Commands.AddDocumentClause;
@@ -180,6 +179,7 @@ public class DocumentsControllerExtraTests
     // ── MergeClauses ──
     [Fact] public async Task Merge_NoUser() => Assert.IsType<UnauthorizedResult>((await NoUser().MergeClauses(Guid.NewGuid(), new MergeClausesRequest(Guid.NewGuid(), Guid.NewGuid()))).Result);
     [Fact] public async Task Merge_Same() { var id = Guid.NewGuid(); Assert.IsType<BadRequestObjectResult>((await WithUser().MergeClauses(Guid.NewGuid(), new MergeClausesRequest(id, id))).Result); }
+    [Fact] public async Task Merge_MissingFirstClauseId() => Assert.IsType<BadRequestObjectResult>((await WithUser().MergeClauses(Guid.NewGuid(), new MergeClausesRequest(null, Guid.NewGuid()))).Result);
 
     [Fact]
     public async Task Merge_Ok()

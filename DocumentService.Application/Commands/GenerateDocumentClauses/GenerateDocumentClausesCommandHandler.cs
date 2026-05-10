@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.GenerateDocumentClauses;
 
-public class GenerateDocumentClausesCommandHandler
+public partial class GenerateDocumentClausesCommandHandler
     : IRequestHandler<GenerateDocumentClausesCommand, GenerateDocumentClausesResponse>
 {
     private const string DocumentNotFoundError = "Document with ID '{0}' not found.";
@@ -40,10 +40,7 @@ public class GenerateDocumentClausesCommandHandler
     public async Task<GenerateDocumentClausesResponse> Handle(
         GenerateDocumentClausesCommand request, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Starting clause extraction for document {DocumentId}", request.DocumentId);
-        }
+        LogClauseExtractionStarted(_logger, request.DocumentId);
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -79,12 +76,12 @@ public class GenerateDocumentClausesCommandHandler
 
         var generatedAt = DateTime.UtcNow;
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Clause extraction completed for document {DocumentId}. Characters extracted: {CharCount}, Clauses extracted: {ClauseCount}, Chunks processed: {ChunksProcessed}",
-                request.DocumentId, extractedText.Length, extractionResult.Clauses.Count, extractionResult.ChunksProcessed);
-        }
+        LogClauseExtractionCompleted(
+            _logger,
+            request.DocumentId,
+            extractedText.Length,
+            extractionResult.Clauses.Count,
+            extractionResult.ChunksProcessed);
 
         return new GenerateDocumentClausesResponse(
             document.Id,
@@ -100,4 +97,10 @@ public class GenerateDocumentClausesCommandHandler
             extractionResult.ChunksProcessed
         );
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Starting clause extraction for document {DocumentId}")]
+    private static partial void LogClauseExtractionStarted(ILogger logger, Guid documentId);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Clause extraction completed for document {DocumentId}. Characters extracted: {CharCount}, Clauses extracted: {ClauseCount}, Chunks processed: {ChunksProcessed}")]
+    private static partial void LogClauseExtractionCompleted(ILogger logger, Guid documentId, int charCount, int clauseCount, int chunksProcessed);
 }

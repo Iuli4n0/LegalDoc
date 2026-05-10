@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.ClassifyDocumentClauses;
 
-public class ClassifyDocumentClausesCommandHandler
+public partial class ClassifyDocumentClausesCommandHandler
     : IRequestHandler<ClassifyDocumentClausesCommand, ClassifyDocumentClausesResponse>
 {
     private const string DocumentNotFoundError = "Document with ID '{0}' not found.";
@@ -54,13 +54,7 @@ public class ClassifyDocumentClausesCommandHandler
         await _clauseRepository.UpdateRangeAsync(clauses, cancellationToken).ConfigureAwait(false);
 
         var classifiedAt = DateTime.UtcNow;
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Clause classification completed for document {DocumentId}. Clauses classified: {ClauseCount}",
-                request.DocumentId,
-                clauses.Count);
-        }
+        LogClassificationCompleted(_logger, request.DocumentId, clauses.Count);
 
         return new ClassifyDocumentClausesResponse(
             request.DocumentId,
@@ -72,4 +66,7 @@ public class ClassifyDocumentClausesCommandHandler
                 c.ClassifiedAt ?? classifiedAt)).ToList(),
             classifiedAt);
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Clause classification completed for document {DocumentId}. Clauses classified: {ClauseCount}")]
+    private static partial void LogClassificationCompleted(ILogger logger, Guid documentId, int clauseCount);
 }

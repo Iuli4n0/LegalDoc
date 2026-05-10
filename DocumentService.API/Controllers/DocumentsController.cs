@@ -522,18 +522,24 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/clauses/merge")]
-    public async Task<ActionResult<DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesResponse>> MergeClauses(Guid id, [FromBody] MergeClausesRequest request)
+    public async Task<ActionResult<DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesResponse>> MergeClauses(Guid id, [FromBody] MergeClausesRequest? request)
     {
         var userIdString = GetUserId();
         if (userIdString is null)
             return Unauthorized();
+
+        if (request is null)
+            return BadRequest("Request body is required.");
+
+        if (request.FirstClauseId is null || request.SecondClauseId is null)
+            return BadRequest("Both clause IDs are required.");
 
         if (request.FirstClauseId == request.SecondClauseId)
             return BadRequest("Cannot merge a clause with itself.");
 
         try
         {
-            var command = new DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesCommand(id, userIdString, request.FirstClauseId, request.SecondClauseId);
+            var command = new DocumentService.Application.Commands.MergeDocumentClauses.MergeDocumentClausesCommand(id, userIdString, request.FirstClauseId.Value, request.SecondClauseId.Value);
             var response = await _mediator.Send(command).ConfigureAwait(false);
             return Ok(response);
         }
@@ -571,4 +577,4 @@ public record UserLimitsDto(int TotalDocumentsUploaded, int MaxDocuments, int Ma
 public record AskQuestionRequest(string Question);
 
 public record AddClauseRequest(string Text);
-public record MergeClausesRequest(Guid FirstClauseId, Guid SecondClauseId);
+public record MergeClausesRequest(Guid? FirstClauseId, Guid? SecondClauseId);

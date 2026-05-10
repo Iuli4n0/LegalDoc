@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.IndexDocument;
 
-public class IndexDocumentCommandHandler
+public partial class IndexDocumentCommandHandler
     : IRequestHandler<IndexDocumentCommand, IndexDocumentResponse>
 {
     private const int DefaultChunkSize = 1200;
@@ -45,10 +45,7 @@ public class IndexDocumentCommandHandler
     public async Task<IndexDocumentResponse> Handle(
         IndexDocumentCommand request, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Starting document indexing for document {DocumentId}", request.DocumentId);
-        }
+        LogIndexingStarted(_logger, request.DocumentId);
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -70,10 +67,7 @@ public class IndexDocumentCommandHandler
 
         // Split into chunks
         var textChunks = SplitIntoChunks(extractedText, DefaultChunkSize, ChunkOverlap);
-        if (_logger.IsEnabled(LogLevel.Debug))
-        {
-            _logger.LogDebug("Text split into {ChunkCount} chunk(s) for indexing", textChunks.Count);
-        }
+        LogTextSplit(_logger, textChunks.Count);
 
         // Generate embeddings and create entities
         var documentChunks = new List<DocumentChunk>();
@@ -81,10 +75,7 @@ public class IndexDocumentCommandHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (_logger.IsEnabled(LogLevel.Debug))
-            {
-                _logger.LogDebug("Generating embedding for chunk {Current}/{Total}", i + 1, textChunks.Count);
-            }
+            LogGeneratingEmbedding(_logger, i + 1, textChunks.Count);
             var embedding = await _embeddingService.GenerateEmbeddingAsync(textChunks[i], cancellationToken).ConfigureAwait(false);
             var chunk = DocumentChunk.Create(request.DocumentId, i, textChunks[i], embedding);
             documentChunks.Add(chunk);
@@ -94,12 +85,7 @@ public class IndexDocumentCommandHandler
         await _chunkRepository.AddRangeAsync(documentChunks).ConfigureAwait(false);
 
         var indexedAt = DateTime.UtcNow;
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Document indexing completed for {DocumentId}. {ChunkCount} chunks created.",
-                request.DocumentId, documentChunks.Count);
-        }
+        LogIndexingCompleted(_logger, request.DocumentId, documentChunks.Count);
 
         return new IndexDocumentResponse(request.DocumentId, documentChunks.Count, indexedAt);
     }
@@ -161,4 +147,16 @@ public class IndexDocumentCommandHandler
 
         return -1;
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Starting document indexing for document {DocumentId}")]
+    private static partial void LogIndexingStarted(ILogger logger, Guid documentId);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Debug, Message = "Text split into {ChunkCount} chunk(s) for indexing")]
+    private static partial void LogTextSplit(ILogger logger, int chunkCount);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Debug, Message = "Generating embedding for chunk {Current}/{Total}")]
+    private static partial void LogGeneratingEmbedding(ILogger logger, int current, int total);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Document indexing completed for {DocumentId}. {ChunkCount} chunks created.")]
+    private static partial void LogIndexingCompleted(ILogger logger, Guid documentId, int chunkCount);
 }

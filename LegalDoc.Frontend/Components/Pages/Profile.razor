@@ -29,7 +29,7 @@ else
     @if (AuthState.IsAuthenticated)
     {
         <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudGrid AlignItems="Center">
+            <MudGrid Class="d-flex align-items-center">
                 <MudItem xs="12" sm="8">
                     <MudText Typo="Typo.h6">@AuthState.UserName</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">@AuthState.UserEmail</MudText>

@@ -1,9 +1,5 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DocumentService.Application.Abstractions;
@@ -35,10 +31,7 @@ public partial class TextExtractionService : ITextExtractionService
 
     public async Task<string> ExtractTextAsync(Stream fileStream, string contentType)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Extracting text from file with content type: {ContentType}", contentType);
-        }
+        LogExtractingText(_logger, contentType);
 
         var extractedText = contentType.ToLowerInvariant() switch
         {
@@ -67,15 +60,12 @@ public partial class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Extracted {CharCount} characters from PDF ({PageCount} pages)", text.Length, document.NumberOfPages);
-            }
+            LogPdfExtracted(_logger, text.Length, document.NumberOfPages);
             return text;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to extract text from PDF");
+            LogPdfFailure(_logger, ex);
             throw new InvalidOperationException("Failed to extract text from PDF file.", ex);
         }
     }
@@ -110,15 +100,12 @@ public partial class TextExtractionService : ITextExtractionService
             }
 
             var text = sb.ToString();
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Extracted {CharCount} characters from DOCX", text.Length);
-            }
+            LogDocxExtracted(_logger, text.Length);
             return text;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to extract text from DOCX");
+            LogDocxFailure(_logger, ex);
             throw new InvalidOperationException("Failed to extract text from DOCX file.", ex);
         }
     }
@@ -140,6 +127,21 @@ public partial class TextExtractionService : ITextExtractionService
 
         return text.Trim();
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Extracting text from file with content type: {ContentType}")]
+    private static partial void LogExtractingText(ILogger logger, string contentType);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Extracted {CharCount} characters from PDF ({PageCount} pages)")]
+    private static partial void LogPdfExtracted(ILogger logger, int charCount, int pageCount);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Error, Message = "Failed to extract text from PDF")]
+    private static partial void LogPdfFailure(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Extracted {CharCount} characters from DOCX")]
+    private static partial void LogDocxExtracted(ILogger logger, int charCount);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Failed to extract text from DOCX")]
+    private static partial void LogDocxFailure(ILogger logger, Exception exception);
 
     [GeneratedRegex(@"(\w+)[-‐‑]\s*[\r\n]+\s*(\w+)")]
     private static partial Regex HyphenLineBreakRegex();

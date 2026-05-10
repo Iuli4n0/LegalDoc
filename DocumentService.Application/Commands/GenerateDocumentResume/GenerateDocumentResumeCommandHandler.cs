@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.GenerateDocumentResume;
 
-public class GenerateDocumentResumeCommandHandler
+public partial class GenerateDocumentResumeCommandHandler
     : IRequestHandler<GenerateDocumentResumeCommand, GenerateDocumentResumeResponse>
 {
     private const string DocumentNotFoundError = "Document with ID '{0}' not found.";
@@ -35,10 +35,7 @@ public class GenerateDocumentResumeCommandHandler
     public async Task<GenerateDocumentResumeResponse> Handle(
         GenerateDocumentResumeCommand request, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Starting resume generation for document {DocumentId}", request.DocumentId);
-        }
+        LogResumeStarted(_logger, request.DocumentId);
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -65,12 +62,8 @@ public class GenerateDocumentResumeCommandHandler
         document.SetResume(resumeResult.Resume);
         await _documentRepository.UpdateAsync(document).ConfigureAwait(false);
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Resume generation completed for document {DocumentId}. Characters extracted: {CharCount}, Chunks processed: {ChunksProcessed}",
-                request.DocumentId, extractedText.Length, resumeResult.ChunksProcessed);
-        }
+        var charCount = extractedText.Length;
+        LogResumeCompleted(_logger, request.DocumentId, charCount, resumeResult.ChunksProcessed);
 
         return new GenerateDocumentResumeResponse(
             document.Id,
@@ -79,4 +72,10 @@ public class GenerateDocumentResumeCommandHandler
             resumeResult.ChunksProcessed
         );
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Starting resume generation for document {DocumentId}")]
+    private static partial void LogResumeStarted(ILogger logger, Guid documentId);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Resume generation completed for document {DocumentId}. Characters extracted: {CharCount}, Chunks processed: {ChunksProcessed}")]
+    private static partial void LogResumeCompleted(ILogger logger, Guid documentId, int charCount, int chunksProcessed);
 }

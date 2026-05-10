@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -11,7 +7,7 @@ using OllamaSharp;
 
 namespace DocumentService.Infrastructure.Services;
 
-public class OllamaResumeService : IResumeGeneratorService
+public partial class OllamaResumeService : IResumeGeneratorService
 {
     private const int DefaultChunkSize = 2500;
     private const int DefaultTimeoutSeconds = 300;
@@ -26,6 +22,9 @@ public class OllamaResumeService : IResumeGeneratorService
 
     public OllamaResumeService(IConfiguration configuration, ILogger<OllamaResumeService> logger)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(logger);
+
         _logger = logger;
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
@@ -35,9 +34,7 @@ public class OllamaResumeService : IResumeGeneratorService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        _logger.LogInformation(
-            "OllamaResumeService initialized. Endpoint: {Endpoint}, Model: {Model}, ChunkSize: {ChunkSize}",
-            endpoint, _model, _chunkSize);
+        LogInitialized(_logger, endpoint, _model, _chunkSize);
     }
 
     public async Task<ResumeResult> GenerateResumeAsync(string text, CancellationToken cancellationToken = default)
@@ -46,7 +43,7 @@ public class OllamaResumeService : IResumeGeneratorService
             throw new ArgumentException("Text cannot be empty.", nameof(text));
 
         var chunks = SplitIntoChunks(text, _chunkSize);
-        _logger.LogInformation("Text split into {ChunkCount} chunk(s) of max {ChunkSize} characters", chunks.Count, _chunkSize);
+        LogChunkSplit(_logger, chunks.Count, _chunkSize);
 
         if (chunks.Count == 1)
         {
@@ -57,12 +54,12 @@ public class OllamaResumeService : IResumeGeneratorService
         var partialResumes = new List<string>();
         for (var i = 0; i < chunks.Count; i++)
         {
-            _logger.LogInformation("Processing chunk {Current}/{Total}", i + 1, chunks.Count);
+            LogChunkProcessing(_logger, i + 1, chunks.Count);
             var partialResume = await GenerateChunkResumeAsync(chunks[i], i + 1, chunks.Count, cancellationToken).ConfigureAwait(false);
             partialResumes.Add(partialResume);
         }
 
-        _logger.LogInformation("Combining {Count} partial resumes into final resume", partialResumes.Count);
+        LogCombiningResumes(_logger, partialResumes.Count);
         var finalResume = await CombineResumesAsync(partialResumes, cancellationToken).ConfigureAwait(false);
 
         return new ResumeResult(finalResume, chunks.Count);
@@ -153,28 +150,52 @@ public class OllamaResumeService : IResumeGeneratorService
             }
 
             var result = sb.ToString().Trim();
-            _logger.LogInformation("Ollama response received: {CharCount} characters", result.Length);
+            LogResponseReceived(_logger, result.Length);
             return result;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             var pullCommand = $"ollama pull {_model}";
-            _logger.LogError(ex, "Ollama returned 404. Model '{Model}' is likely missing; run `{PullCommand}`.", _model, pullCommand);
+            LogModelMissing(_logger, ex, _model, pullCommand);
             throw new InvalidOperationException(
                 $"Ollama model '{_model}' is not available. Pull it first (example: {pullCommand}).",
                 ex);
         }
-        catch (OperationCanceledException exception)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogError(exception, "Ollama request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
+            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
             throw new TimeoutException($"Ollama request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to communicate with Ollama");
-            throw new InvalidOperationException($"Failed to generate resume with Ollama: {ex.Message}", ex);
+            LogFailure(_logger, ex);
+            throw new InvalidOperationException($"Failed to communicate with Ollama: {ex.Message}", ex);
         }
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "OllamaResumeService initialized. Endpoint: {Endpoint}, Model: {Model}, ChunkSize: {ChunkSize}")]
+    private static partial void LogInitialized(ILogger logger, string endpoint, string model, int chunkSize);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Text split into {ChunkCount} chunk(s) of max {ChunkSize} characters")]
+    private static partial void LogChunkSplit(ILogger logger, int chunkCount, int chunkSize);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Processing chunk {Current}/{Total}")]
+    private static partial void LogChunkProcessing(ILogger logger, int current, int total);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Combining {Count} partial resumes into final resume")]
+    private static partial void LogCombiningResumes(ILogger logger, int count);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message = "Ollama response received: {CharCount} characters")]
+    private static partial void LogResponseReceived(ILogger logger, int charCount);
+
+    [LoggerMessage(EventId = 6, Level = LogLevel.Error, Message = "Ollama returned 404. Model '{Model}' is likely missing; run `{PullCommand}`.")]
+    private static partial void LogModelMissing(ILogger logger, Exception exception, string model, string pullCommand);
+
+    [LoggerMessage(EventId = 7, Level = LogLevel.Error, Message = "Ollama request timed out after {TimeoutSeconds} seconds")]
+    private static partial void LogTimeout(ILogger logger, Exception exception, int timeoutSeconds);
+
+    [LoggerMessage(EventId = 8, Level = LogLevel.Error, Message = "Failed to communicate with Ollama")]
+    private static partial void LogFailure(ILogger logger, Exception exception);
 
     private static List<string> SplitIntoChunks(string text, int chunkSize)
     {

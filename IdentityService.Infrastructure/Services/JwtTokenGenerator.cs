@@ -5,6 +5,7 @@ using System.Text;
 using IdentityService.Application.Abstractions;
 using IdentityService.Domain.Entities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace IdentityService.Infrastructure.Services;
@@ -16,27 +17,32 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     private const string DefaultAudience = "LegalDoc";
 
     private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _env;
 
-    public JwtTokenGenerator(IConfiguration configuration)
+    public JwtTokenGenerator(IConfiguration configuration, IHostEnvironment env)
     {
         _configuration = configuration;
+        _env = env;
     }
 
     public string GenerateToken(User user)
     {
-        var jwtSettings = _configuration.GetSection("JwtSettings");
-        var keyStr = Environment.GetEnvironmentVariable("JWT_SECRET")
-            ?? jwtSettings["Secret"]
-            ?? jwtSettings["Key"]
-            ?? throw new InvalidOperationException("JWT Secret not configured");
+        // Require secret from environment only. Do NOT read secrets from configuration.
+        var keyStr = Environment.GetEnvironmentVariable("JWT_SECRET");
+
+        if (string.IsNullOrWhiteSpace(keyStr))
+        {
+            throw new InvalidOperationException("JWT Secret not configured. Set the 'JWT_SECRET' environment variable or configure a secret store (e.g., Azure Key Vault) and wire it into configuration.");
+        }
+
         var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
-            ?? jwtSettings["Issuer"]
+            ?? _configuration["JwtSettings:Issuer"]
             ?? DefaultIssuer;
         var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
-            ?? jwtSettings["Audience"]
+            ?? _configuration["JwtSettings:Audience"]
             ?? DefaultAudience;
         var expirationRaw = Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES")
-            ?? jwtSettings["ExpirationMinutes"]
+            ?? _configuration["JwtSettings:ExpirationMinutes"]
             ?? DefaultExpirationMinutes.ToString();
         var expirationMinutes = int.Parse(expirationRaw);
 

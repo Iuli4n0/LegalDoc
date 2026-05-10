@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using DocumentService.Domain.Entities;
 using DocumentService.Infrastructure.Persistence;
@@ -12,7 +8,7 @@ using Pgvector.EntityFrameworkCore;
 
 namespace DocumentService.Infrastructure.Repositories;
 
-public class DocumentChunkRepository : IDocumentChunkRepository
+public partial class DocumentChunkRepository : IDocumentChunkRepository
 {
     private readonly AppDbContext _context;
     private readonly ILogger<DocumentChunkRepository> _logger;
@@ -45,12 +41,7 @@ public class DocumentChunkRepository : IDocumentChunkRepository
                 c.Embedding!.CosineDistance(queryVector)))
             .ToListAsync().ConfigureAwait(false);
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation(
-                "Similarity search for document {DocumentId}: found {Count} results (top-{TopK})",
-                documentId, results.Count, topK);
-        }
+        LogSimilaritySearch(_logger, documentId, results.Count, topK);
 
         return results;
     }
@@ -71,10 +62,7 @@ public class DocumentChunkRepository : IDocumentChunkRepository
         {
             _context.DocumentChunks.RemoveRange(chunks);
             await _context.SaveChangesAsync().ConfigureAwait(false);
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Deleted {Count} chunks for document {DocumentId}", chunks.Count, documentId);
-            }
+            LogDeletedChunks(_logger, chunks.Count, documentId);
         }
     }
 
@@ -83,4 +71,10 @@ public class DocumentChunkRepository : IDocumentChunkRepository
         return await _context.DocumentChunks
             .CountAsync(c => c.DocumentId == documentId).ConfigureAwait(false);
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Similarity search for document {DocumentId}: found {Count} results (top-{TopK})")]
+    private static partial void LogSimilaritySearch(ILogger logger, Guid documentId, int count, int topK);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Deleted {Count} chunks for document {DocumentId}")]
+    private static partial void LogDeletedChunks(ILogger logger, int count, Guid documentId);
 }

@@ -76,20 +76,17 @@
 
 <MudCard Class="mb-4">
     <MudCardContent>
-        <MudFileUpload T="IBrowserFile" 
-                       Accept=".pdf,.doc,.docx,.txt" 
-                       MaximumFileCount="1"
-                       FilesChanged="OnFileSelected"
-                       Disabled="@(_limits is not null && !_limits.CanUpload)">
-            <ActivatorContent>
+        <div>
+            <label class="mud-file-label" style="display:inline-block">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.AttachFile"
                            Disabled="@(_limits is not null && !_limits.CanUpload)">
                     Select File
                 </MudButton>
-            </ActivatorContent>
-        </MudFileUpload>
+                <InputFile OnChange="OnInputFileChanged" accept=".pdf,.doc,.docx,.txt" style="display:none" />
+            </label>
+        </div>
 
         @if (_selectedFile is not null)
         {
@@ -203,6 +200,14 @@
     {
         _selectedFile = file;
         _uploadResult = null;
+    }
+
+    private void OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(1);
+        var file = files.FirstOrDefault();
+        OnFileSelected(file);
+        StateHasChanged();
     }
 
     private async Task UploadFile()

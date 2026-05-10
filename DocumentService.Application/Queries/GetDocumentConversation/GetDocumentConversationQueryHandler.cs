@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Queries.GetDocumentConversation;
 
-public class GetDocumentConversationQueryHandler : IRequestHandler<GetDocumentConversationQuery, GetDocumentConversationResponse>
+public partial class GetDocumentConversationQueryHandler : IRequestHandler<GetDocumentConversationQuery, GetDocumentConversationResponse>
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IDocumentMessageRepository _messageRepository;
@@ -26,10 +26,7 @@ public class GetDocumentConversationQueryHandler : IRequestHandler<GetDocumentCo
 
     public async Task<GetDocumentConversationResponse> Handle(GetDocumentConversationQuery request, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Retrieving conversation for document {DocumentId}", request.DocumentId);
-        }
+        LogRetrievingConversation(_logger, request.DocumentId);
 
         var document = await _documentRepository.GetByIdAsync(request.DocumentId).ConfigureAwait(false);
         if (document is null)
@@ -47,4 +44,7 @@ public class GetDocumentConversationQueryHandler : IRequestHandler<GetDocumentCo
 
         return new GetDocumentConversationResponse(dtos);
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Retrieving conversation for document {DocumentId}")]
+    private static partial void LogRetrievingConversation(ILogger logger, Guid documentId);
 }

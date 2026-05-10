@@ -1,4 +1,3 @@
-using System;
 using IdentityService.Application.Abstractions;
 using IdentityService.Application.Commands.CreateCheckoutSession;
 using IdentityService.Application.Commands.CreatePortalSession;
@@ -322,14 +321,16 @@ public class AuthController : ControllerBase
                 }).ConfigureAwait(false);
             }
 
-            return Ok(new SyncCheckoutSessionResponse(
-                user.SubscriptionPlan.ToString(),
-                user.MaxDocuments,
-                user.MaxDocumentSizeMb,
-                user.MonthlyDocumentsUploaded,
-                user.CurrentPeriodEnd));
+            return Ok(new SyncCheckoutSessionResponse
+            {
+                SubscriptionPlan = user.SubscriptionPlan.ToString(),
+                MaxDocuments = user.MaxDocuments,
+                MaxDocumentSizeMb = user.MaxDocumentSizeMb,
+                MonthlyDocumentsUploaded = user.MonthlyDocumentsUploaded,
+                CurrentPeriodEnd = user.CurrentPeriodEnd
+            });
         }
-        catch (Stripe.StripeException ex)
+        catch (StripeException ex)
         {
             return BadRequest(new { message = $"Stripe error while syncing session: {ex.Message}" });
         }
@@ -361,12 +362,16 @@ public class AuthController : ControllerBase
 // Request DTOs
 public record RegisterRequest(string Email, string Password, string FullName);
 public record LoginRequest(string Email, string Password);
-public record UpdateUserLimitsRequest(int MaxDocuments, int MaxDocumentSizeMb);
+public record UpdateUserLimitsRequest(
+    [property: System.Text.Json.Serialization.JsonRequired] int MaxDocuments,
+    [property: System.Text.Json.Serialization.JsonRequired] int MaxDocumentSizeMb);
 public record CreateCheckoutRequest(string Plan);
 public record SyncCheckoutSessionRequest(string SessionId);
-public record SyncCheckoutSessionResponse(
-    string SubscriptionPlan,
-    int MaxDocuments,
-    int MaxDocumentSizeMb,
-    int MonthlyDocumentsUploaded,
-    DateTime CurrentPeriodEnd);
+public class SyncCheckoutSessionResponse
+{
+    public string SubscriptionPlan { get; init; } = string.Empty;
+    public int MaxDocuments { get; init; }
+    public int MaxDocumentSizeMb { get; init; }
+    public int MonthlyDocumentsUploaded { get; init; }
+    public DateTime CurrentPeriodEnd { get; init; }
+}

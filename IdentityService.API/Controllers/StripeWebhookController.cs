@@ -6,7 +6,6 @@ using IdentityService.Application.Abstractions;
 using IdentityService.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Stripe;
 
@@ -17,39 +16,27 @@ namespace IdentityService.API.Controllers;
 public class StripeWebhookController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<StripeWebhookController> _logger;
 
     public StripeWebhookController(
         IUserRepository userRepository,
-        IConfiguration configuration,
         ILogger<StripeWebhookController> logger)
     {
         _userRepository = userRepository;
-        _configuration = configuration;
         _logger = logger;
     }
 
     [HttpPost("webhook")]
-    public async Task<IActionResult> HandleWebhook([ModelBinder(typeof(RawStringModelBinder))] string json)
+    public async Task<IActionResult> HandleWebhook([ModelBinder(BinderType = typeof(StripeEventModelBinder))] Event? stripeEvent)
     {
-        var webhookSecret = _configuration["Stripe:WebhookSecret"];
-
-        Event stripeEvent;
-        try
+        if (!ModelState.IsValid)
         {
-            stripeEvent = EventUtility.ConstructEvent(
-                json,
-                Request.Headers["Stripe-Signature"],
-                webhookSecret);
-        }
-        catch (StripeException ex)
-        {
-            _logger.LogWarning(ex, "Stripe webhook signature verification failed: {Message}", ex.Message);
-            return BadRequest(new { error = "Webhook signature verification failed." });
+            _logger.LogWarning("Invalid Stripe webhook payload or signature verification failed.");
+            return BadRequest(new { error = "Invalid webhook payload or signature verification failed." });
         }
 
-        _logger.LogInformation("Stripe webhook received: {EventType} ({EventId})", stripeEvent.Type, stripeEvent.Id);
+        // At this point model binding succeeded; stripeEvent should be non-null.
+        _logger.LogInformation("Stripe webhook received: {EventType} ({EventId})", stripeEvent!.Type, stripeEvent.Id);
 
         switch (stripeEvent.Type)
         {
@@ -242,12 +229,75 @@ public class StripeWebhookController : ControllerBase
     }
 }
 
-public class RawStringModelBinder : IModelBinder
+public class StripeEventModelBinder : IModelBinder
 {
     public async Task BindModelAsync(ModelBindingContext bindingContext)
     {
-        using var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
-        var value = await reader.ReadToEndAsync().ConfigureAwait(false);
-        bindingContext.Result = ModelBindingResult.Success(value);
+        var httpContext = bindingContext.HttpContext;
+        var request = httpContext.Request;
+        var services = httpContext.RequestServices;
+        var configuration = services.GetService(typeof(IConfiguration)) as IConfiguration;
+        var loggerFactory = services.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
+        var logger = loggerFactory?.CreateLogger("StripeEventModelBinder");
+
+        if (configuration is null)
+        {
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Configuration unavailable");
+            bindingContext.Result = ModelBindingResult.Failed();
+            return;
+        }
+
+        var webhookSecret = configuration["Stripe:WebhookSecret"];
+
+        if (string.IsNullOrEmpty(webhookSecret))
+        {
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Webhook secret not configured");
+            bindingContext.Result = ModelBindingResult.Failed();
+            return;
+        }
+
+        // Ensure the body can be read multiple times
+        request.EnableBuffering();
+        string json;
+        try
+        {
+            request.Body.Position = 0;
+            using var reader = new StreamReader(request.Body, leaveOpen: true);
+            json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            request.Body.Position = 0; // rewind for other components
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to read request body for Stripe webhook");
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Failed to read request body");
+            bindingContext.Result = ModelBindingResult.Failed();
+            return;
+        }
+
+        var sigHeader = request.Headers["Stripe-Signature"].FirstOrDefault();
+        if (string.IsNullOrEmpty(sigHeader))
+        {
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Missing Stripe-Signature header");
+            bindingContext.Result = ModelBindingResult.Failed();
+            return;
+        }
+
+        try
+        {
+            var stripeEvent = EventUtility.ConstructEvent(json, sigHeader, webhookSecret);
+            bindingContext.Result = ModelBindingResult.Success(stripeEvent);
+        }
+        catch (StripeException ex)
+        {
+            logger?.LogWarning(ex, "Stripe webhook signature verification failed: {Message}", ex.Message);
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Signature verification failed");
+            bindingContext.Result = ModelBindingResult.Failed();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to construct Stripe event from payload");
+            bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Invalid Stripe event payload");
+            bindingContext.Result = ModelBindingResult.Failed();
+        }
     }
 }

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands.AskDocumentQuestion;
 
-public class AskDocumentQuestionCommandHandler
+public partial class AskDocumentQuestionCommandHandler
     : IRequestHandler<AskDocumentQuestionCommand, AskDocumentQuestionResponse>
 {
     private const int TopK = 8;
@@ -43,11 +43,7 @@ public class AskDocumentQuestionCommandHandler
     public async Task<AskDocumentQuestionResponse> Handle(
         AskDocumentQuestionCommand request, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Processing Q&A for document {DocumentId}: \"{Question}\"",
-                request.DocumentId, request.Question);
-        }
+        LogProcessingQA(_logger, request.DocumentId, request.Question);
 
         // Save user message
         var userMessage = DocumentService.Domain.Entities.DocumentMessage.Create(
@@ -64,10 +60,7 @@ public class AskDocumentQuestionCommandHandler
         var isIndexed = await _chunkRepository.IsDocumentIndexedAsync(request.DocumentId).ConfigureAwait(false);
         if (!isIndexed)
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Document {DocumentId} is not indexed. Starting indexing...", request.DocumentId);
-            }
+            LogDocumentNotIndexed(_logger, request.DocumentId);
             await _mediator.Send(new IndexDocumentCommand(request.DocumentId), cancellationToken).ConfigureAwait(false);
             isNewlyIndexed = true;
         }
@@ -89,10 +82,7 @@ public class AskDocumentQuestionCommandHandler
                 isNewlyIndexed);
         }
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("Found {Count} relevant chunks", searchResults.Count);
-        }
+        LogFoundChunks(_logger, searchResults.Count);
 
         // Generate answer using LLM
         var contextChunks = searchResults.Select(r => r.Text).ToArray();
@@ -110,4 +100,13 @@ public class AskDocumentQuestionCommandHandler
 
         return new AskDocumentQuestionResponse(answer, sourceChunks, isNewlyIndexed);
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Processing Q&A for document {DocumentId}: \"{Question}\"")]
+    private static partial void LogProcessingQA(ILogger logger, Guid documentId, string question);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Document {DocumentId} is not indexed. Starting indexing...")]
+    private static partial void LogDocumentNotIndexed(ILogger logger, Guid documentId);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Found {Count} relevant chunks")]
+    private static partial void LogFoundChunks(ILogger logger, int count);
 }

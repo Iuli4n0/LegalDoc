@@ -1,8 +1,5 @@
-using System;
 using System.Net;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using DocumentService.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,7 +7,7 @@ using OllamaSharp;
 
 namespace DocumentService.Infrastructure.Services;
 
-public class OllamaQAService : IQAService
+public partial class OllamaQAService : IQAService
 {
     private const int DefaultTimeoutSeconds = 300;
     private const int MaxAnswerWords = 600;
@@ -21,6 +18,9 @@ public class OllamaQAService : IQAService
 
     public OllamaQAService(IConfiguration configuration, ILogger<OllamaQAService> logger)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(logger);
+
         _logger = logger;
 
         var endpoint = configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
@@ -29,9 +29,7 @@ public class OllamaQAService : IQAService
 
         _ollamaClient = new OllamaApiClient(new Uri(endpoint));
 
-        _logger.LogInformation(
-            "OllamaQAService initialized. Endpoint: {Endpoint}, Model: {Model}",
-            endpoint, _model);
+        LogInitialized(_logger, endpoint, _model);
     }
 
     public async Task<string> GenerateAnswerAsync(string question, string[] contextChunks, CancellationToken cancellationToken = default)
@@ -102,24 +100,40 @@ public class OllamaQAService : IQAService
             }
 
             var result = sb.ToString().Trim();
-            _logger.LogInformation("Q&A response received: {CharCount} characters", result.Length);
+            LogResponseReceived(_logger, result.Length);
             return result;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            _logger.LogError(ex, "Ollama returned 404. Model '{Model}' is likely missing.", _model);
+            var pullCommand = $"ollama pull {_model}";
+            LogModelMissing(_logger, ex, _model, pullCommand);
             throw new InvalidOperationException(
                 $"Ollama model '{_model}' is not available. Pull it first.", ex);
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogError(ex, "Q&A request timed out after {TimeoutSeconds} seconds", DefaultTimeoutSeconds);
+            LogTimeout(_logger, ex, DefaultTimeoutSeconds);
             throw new TimeoutException($"Q&A request timed out after {DefaultTimeoutSeconds} seconds.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate Q&A answer with Ollama");
+            LogFailure(_logger, ex);
             throw new InvalidOperationException($"Failed to generate answer: {ex.Message}", ex);
         }
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "OllamaQAService initialized. Endpoint: {Endpoint}, Model: {Model}")]
+    private static partial void LogInitialized(ILogger logger, string endpoint, string model);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Q&A response received: {CharCount} characters")]
+    private static partial void LogResponseReceived(ILogger logger, int charCount);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Error, Message = "Ollama returned 404. Model '{Model}' is likely missing; run `{PullCommand}`.")]
+    private static partial void LogModelMissing(ILogger logger, Exception exception, string model, string pullCommand);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Q&A request timed out after {TimeoutSeconds} seconds")]
+    private static partial void LogTimeout(ILogger logger, Exception exception, int timeoutSeconds);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Failed to generate Q&A answer with Ollama")]
+    private static partial void LogFailure(ILogger logger, Exception exception);
 }
