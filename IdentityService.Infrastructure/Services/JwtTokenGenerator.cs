@@ -28,12 +28,13 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public string GenerateToken(User user)
     {
-        // Require secret from environment only. Do NOT read secrets from configuration.
-        var keyStr = Environment.GetEnvironmentVariable("JWT_SECRET");
+        // Prefer environment variable but fall back to configuration (JwtSettings:Secret)
+        var keyStr = Environment.GetEnvironmentVariable("JWT_SECRET")
+                     ?? _configuration["JwtSettings:Secret"];
 
         if (string.IsNullOrWhiteSpace(keyStr))
         {
-            throw new InvalidOperationException("JWT Secret not configured. Set the 'JWT_SECRET' environment variable or configure a secret store (e.g., Azure Key Vault) and wire it into configuration.");
+            throw new InvalidOperationException("JWT Secret not configured. Set JwtSettings:Secret or JWT_SECRET environment variable.");
         }
 
         var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
@@ -45,7 +46,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         var expirationRaw = Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES")
             ?? _configuration["JwtSettings:ExpirationMinutes"]
             ?? DefaultExpirationMinutes.ToString();
-        var expirationMinutes = int.Parse(expirationRaw);
+
+        // Be tolerant of invalid/missing expiration values
+        if (!int.TryParse(expirationRaw, out var expirationMinutes) || expirationMinutes <= 0)
+        {
+            expirationMinutes = DefaultExpirationMinutes;
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
