@@ -1,5 +1,3 @@
-using System;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using DocumentService.Application.Commands.AskDocumentQuestion;
 using DocumentService.Application.Commands.ClassifyDocumentClauses;
